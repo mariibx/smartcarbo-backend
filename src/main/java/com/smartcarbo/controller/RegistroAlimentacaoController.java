@@ -52,3 +52,4 @@ public class RegistroAlimentacaoController {
         registroAlimentacaoService.excluir(id);
     }
 }
+
