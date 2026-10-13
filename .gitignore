@@ -1,0 +1,31 @@
+﻿# Maven e arquivos compilados
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Logs e arquivos de erro
+*.log
+hs_err_pid*
+replay_pid*
+
+# IDEs e editores
+.vscode/
+.settings/
+.classpath
+.project
+.idea/
+*.iml
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Segredos e configurações locais
+.env
+.env.*
+!.env.example
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.swp
