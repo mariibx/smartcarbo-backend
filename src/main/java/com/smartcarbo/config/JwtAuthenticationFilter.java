@@ -5,7 +5,6 @@ import java.util.Collections;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -34,62 +33,77 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Log temporário para investigar o erro 403
-        System.out.println(
-            "JWT FILTER: "
-            + request.getMethod()
-            + " "
-            + request.getRequestURI()
-        );
-
         String authorization = request.getHeader("Authorization");
 
-        // Se não houver token, continua a requisição normalmente
+        // Sem token: deixa o Spring Security decidir se a rota é pública.
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authorization.substring(7);
+        String token = authorization.substring(7).trim();
+
+        if (token.isEmpty()) {
+            SecurityContextHolder.clearContext();
+            responderNaoAutorizado(
+                response,
+                "Token JWT inválido ou vazio."
+            );
+            return;
+        }
 
         try {
             Claims claims = jwtService.validarToken(token);
+
             String email = claims.getSubject();
+            Long usuarioId = claims.get("usuarioId", Long.class);
 
-            if (email != null
-                    && SecurityContextHolder.getContext()
-                            .getAuthentication() == null) {
+            if (email == null || email.isBlank() || usuarioId == null) {
+                SecurityContextHolder.clearContext();
+                responderNaoAutorizado(
+                    response,
+                    "Token JWT inválido ou incompleto."
+                );
+                return;
+            }
 
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 UsernamePasswordAuthenticationToken autenticacao =
-                        new UsernamePasswordAuthenticationToken(
-                                email,
-                                null,
-                                Collections.emptyList()
-                        );
+                    new UsernamePasswordAuthenticationToken(
+                        email,
+                        null,
+                        Collections.emptyList()
+                    );
 
                 autenticacao.setDetails(
-                        new WebAuthenticationDetailsSource()
-                                .buildDetails(request)
+                    new UsuarioAuthenticationDetails(usuarioId, request)
                 );
 
                 SecurityContextHolder.getContext()
-                        .setAuthentication(autenticacao);
+                    .setAuthentication(autenticacao);
             }
 
         } catch (JwtException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
-
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
-
-            response.getWriter().write(
-                    "{\"erro\":\"Token JWT inválido ou expirado.\"}"
+            responderNaoAutorizado(
+                response,
+                "Token JWT inválido ou expirado."
             );
-
             return;
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void responderNaoAutorizado(
+            HttpServletResponse response,
+            String mensagem) throws IOException {
+
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(
+            "{\"erro\":\"" + mensagem + "\"}"
+        );
     }
 }

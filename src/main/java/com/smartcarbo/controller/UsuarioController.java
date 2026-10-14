@@ -1,13 +1,26 @@
+
 package com.smartcarbo.controller;
 
+import com.smartcarbo.dto.UsuarioAtualizacaoRequest;
+import com.smartcarbo.dto.UsuarioCadastroRequest;
+import com.smartcarbo.dto.UsuarioResponse;
 import com.smartcarbo.model.entity.Usuario;
 import com.smartcarbo.model.service.UsuarioService;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/usuarios")
@@ -19,54 +32,127 @@ public class UsuarioController {
         this.usuarioService = usuarioService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<Usuario>> listar() {
-        return ResponseEntity.ok(usuarioService.listar());
-    }
-
     @PostMapping
-    public ResponseEntity<Usuario> salvar(
-            @RequestBody(required = false) Usuario usuario) {
+    public ResponseEntity<UsuarioResponse> cadastrar(
+            @Valid @RequestBody UsuarioCadastroRequest request) {
 
-        if (usuario == null) {
-            return ResponseEntity.badRequest().build();
-        }
+        Usuario usuario = new Usuario();
 
-        Usuario novoUsuario = usuarioService.salvar(usuario);
+        usuario.setNome(request.nome());
+        usuario.setEmail(request.email());
+        usuario.setSenha(request.senha());
+        usuario.setDataNascimento(request.dataNascimento());
+        usuario.setAltura(request.altura());
+        usuario.setPeso(request.peso());
+        usuario.setSexo(request.sexo());
+        usuario.setObjetivo(request.objetivo());
+        usuario.setNivelAtividade(request.nivelAtividade());
+        usuario.setRestricoes(request.restricoes());
+        usuario.setCondicaoSaude(request.condicaoSaude());
+        usuario.setAvaliacaoAlimentacao(request.avaliacaoAlimentacao());
+
+        Usuario usuarioSalvo = usuarioService.salvar(usuario);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(novoUsuario);
+                .body(UsuarioResponse.de(usuarioSalvo));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioResponse> meuPerfil(
+            Authentication authentication) {
+
+        Usuario usuario = obterUsuarioAutenticado(authentication);
+
+        return ResponseEntity.ok(UsuarioResponse.de(usuario));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Usuario> buscarPorId(
-            @PathVariable Long id) {
+    public ResponseEntity<UsuarioResponse> buscarPorId(
+            @PathVariable Long id,
+            Authentication authentication) {
 
-        return usuarioService.buscarPorId(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        Usuario autenticado = obterUsuarioAutenticado(authentication);
+        verificarProprietario(id, autenticado);
+
+        Usuario usuario = usuarioService.buscarPorId(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Usuário não encontrado."
+                ));
+
+        return ResponseEntity.ok(UsuarioResponse.de(usuario));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Usuario> atualizar(
+    public ResponseEntity<UsuarioResponse> atualizar(
             @PathVariable Long id,
-            @RequestBody(required = false) Usuario usuario) {
+            @Valid @RequestBody UsuarioAtualizacaoRequest request,
+            Authentication authentication) {
 
-        if (usuario == null) {
-            return ResponseEntity.badRequest().build();
-        }
+        Usuario autenticado = obterUsuarioAutenticado(authentication);
+        verificarProprietario(id, autenticado);
+
+        Usuario dados = new Usuario();
+
+        dados.setNome(request.nome());
+        dados.setEmail(request.email());
+        dados.setDataNascimento(request.dataNascimento());
+        dados.setAltura(request.altura());
+        dados.setPeso(request.peso());
+        dados.setSexo(request.sexo());
+        dados.setObjetivo(request.objetivo());
+        dados.setNivelAtividade(request.nivelAtividade());
+        dados.setRestricoes(request.restricoes());
+        dados.setCondicaoSaude(request.condicaoSaude());
+        dados.setAvaliacaoAlimentacao(request.avaliacaoAlimentacao());
+
+        Usuario usuarioAtualizado = usuarioService.atualizar(id, dados);
 
         return ResponseEntity.ok(
-                usuarioService.atualizar(id, usuario)
+                UsuarioResponse.de(usuarioAtualizado)
         );
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        Usuario autenticado = obterUsuarioAutenticado(authentication);
+        verificarProprietario(id, autenticado);
 
         usuarioService.excluir(id);
+
         return ResponseEntity.noContent().build();
+    }
+
+    private Usuario obterUsuarioAutenticado(
+            Authentication authentication) {
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || authentication.getName().isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Usuário não autenticado."
+            );
+        }
+
+        return usuarioService.buscarPorEmail(authentication.getName());
+    }
+
+    private void verificarProprietario(Long id, Usuario autenticado) {
+        if (id == null
+                || autenticado.getId() == null
+                || !autenticado.getId().equals(id)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Você não tem permissão para acessar este usuário."
+            );
+        }
     }
 }

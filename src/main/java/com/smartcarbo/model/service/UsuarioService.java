@@ -1,11 +1,11 @@
 package com.smartcarbo.model.service;
 
+import com.smartcarbo.dto.UsuarioAtualizacaoRequest;
 import com.smartcarbo.model.entity.Usuario;
 import com.smartcarbo.model.repository.UsuarioRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,14 +17,19 @@ import java.util.regex.Pattern;
 @Service
 public class UsuarioService {
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    private final BCryptPasswordEncoder passwordEncoder =
-            new BCryptPasswordEncoder();
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
+    public UsuarioService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder) {
+
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public Usuario salvar(Usuario usuario) {
         if (usuario == null) {
@@ -60,6 +65,17 @@ public class UsuarioService {
         return usuarioRepository.findById(id);
     }
 
+    public Usuario buscarPorEmail(String email) {
+        String emailNormalizado = normalizarEmail(email);
+        validarEmail(emailNormalizado);
+
+        return usuarioRepository.findByEmail(emailNormalizado)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Usuário não encontrado."
+                ));
+    }
+
     public Usuario atualizar(Long id, Usuario usuario) {
         validarId(id);
 
@@ -76,7 +92,6 @@ public class UsuarioService {
                         "Usuário não encontrado."
                 ));
 
-        // Atualiza o e-mail somente quando ele for informado.
         if (usuario.getEmail() != null) {
             String email = normalizarEmail(usuario.getEmail());
             validarEmail(email);
@@ -95,7 +110,6 @@ public class UsuarioService {
             existente.setEmail(email);
         }
 
-        // Atualiza a senha somente quando uma nova senha for informada.
         String senhaRecebida = usuario.getSenha();
 
         if (senhaRecebida != null && !senhaRecebida.isBlank()) {
@@ -103,7 +117,6 @@ public class UsuarioService {
             existente.setSenha(passwordEncoder.encode(senhaRecebida));
         }
 
-        // Atualiza apenas os campos permitidos.
         if (usuario.getNome() != null) {
             existente.setNome(usuario.getNome());
         }

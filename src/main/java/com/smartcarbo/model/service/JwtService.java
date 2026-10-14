@@ -25,37 +25,61 @@ public class JwtService {
 
         if (segredo == null || segredo.isBlank()) {
             throw new IllegalArgumentException(
-                    "A chave de assinatura do JWT não foi configurada."
+                "A chave de assinatura do JWT não foi configurada."
             );
         }
-
-        byte[] chaveBytes = Decoders.BASE64.decode(segredo);
-
-        this.secretKey = Keys.hmacShaKeyFor(chaveBytes);
-        this.expiracaoMs = expiracaoMs;
 
         if (expiracaoMs <= 0) {
             throw new IllegalArgumentException(
-                    "A validade do JWT deve ser maior que zero."
+                "A validade do JWT deve ser maior que zero."
             );
         }
+
+        byte[] chaveBytes;
+
+        try {
+            chaveBytes = Decoders.BASE64.decode(segredo);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                "A chave JWT deve estar codificada em Base64.", e
+            );
+        }
+
+        this.secretKey = Keys.hmacShaKeyFor(chaveBytes);
+        this.expiracaoMs = expiracaoMs;
     }
 
     public String gerarToken(Long usuarioId, String email) {
+        if (usuarioId == null || usuarioId <= 0) {
+            throw new IllegalArgumentException(
+                "O ID do usuário deve ser válido."
+            );
+        }
+
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException(
+                "O e-mail do usuário é obrigatório para gerar o token."
+            );
+        }
+
         Instant agora = Instant.now();
 
         return Jwts.builder()
                 .subject(email)
                 .claim("usuarioId", usuarioId)
                 .issuedAt(Date.from(agora))
-                .expiration(Date.from(
-                        agora.plusMillis(expiracaoMs)
-                ))
+                .expiration(Date.from(agora.plusMillis(expiracaoMs)))
                 .signWith(secretKey)
                 .compact();
     }
 
     public Claims validarToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException(
+                "O token JWT não pode estar vazio."
+            );
+        }
+
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()

@@ -34,7 +34,8 @@ public class AuthService {
             return null;
         }
 
-        String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
+        String emailNormalizado =
+                email.trim().toLowerCase(Locale.ROOT);
 
         Usuario usuario = usuarioRepository
                 .findByEmail(emailNormalizado)
