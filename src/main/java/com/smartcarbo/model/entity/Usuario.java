@@ -2,6 +2,8 @@ package com.smartcarbo.model.entity;
 
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +20,7 @@ public class Usuario {
 
     private String nome;
     private String email;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String senha;
     private LocalDate dataNascimento;
     private Double altura;
@@ -134,3 +137,4 @@ public class Usuario {
     }
 
 }
+

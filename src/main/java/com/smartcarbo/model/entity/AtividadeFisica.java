@@ -22,8 +22,6 @@ public class AtividadeFisica {
 
     private Integer calorias;
 
-    // Getter's e Setter's
-
     public Long getId() {
         return id;
     }

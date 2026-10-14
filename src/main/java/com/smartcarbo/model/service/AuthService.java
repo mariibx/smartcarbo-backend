@@ -1,8 +1,8 @@
-
 package com.smartcarbo.model.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import java.util.Locale;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,13 +13,20 @@ import com.smartcarbo.model.repository.UsuarioRepository;
 @Service
 public class AuthService {
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    private final BCryptPasswordEncoder passwordEncoder =
-            new BCryptPasswordEncoder();
+    public AuthService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService) {
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+    }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public LoginResponse autenticar(String email, String senha) {
 
         if (email == null || email.isBlank()
@@ -27,45 +34,35 @@ public class AuthService {
             return null;
         }
 
+        String emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
+
         Usuario usuario = usuarioRepository
-                .findByEmail(email.trim())
+                .findByEmail(emailNormalizado)
                 .orElse(null);
 
         if (usuario == null || usuario.getSenha() == null) {
             return null;
         }
 
-        String senhaArmazenada = usuario.getSenha();
-
-        boolean senhaValida;
-
-        if (senhaArmazenada.startsWith("$2a$")
-                || senhaArmazenada.startsWith("$2b$")
-                || senhaArmazenada.startsWith("$2y$")) {
-
-            senhaValida = passwordEncoder.matches(
-                    senha,
-                    senhaArmazenada
-            );
-
-        } else {
-            // Compatibilidade temporária com senhas antigas em texto puro.
-            senhaValida = senha.equals(senhaArmazenada);
-
-            if (senhaValida) {
-                usuario.setSenha(passwordEncoder.encode(senha));
-                usuarioRepository.save(usuario);
-            }
-        }
+        boolean senhaValida = passwordEncoder.matches(
+                senha,
+                usuario.getSenha()
+        );
 
         if (!senhaValida) {
             return null;
         }
 
+        String token = jwtService.gerarToken(
+                usuario.getId(),
+                usuario.getEmail()
+        );
+
         return new LoginResponse(
                 usuario.getId(),
                 usuario.getNome(),
-                usuario.getEmail()
+                usuario.getEmail(),
+                token
         );
     }
 }

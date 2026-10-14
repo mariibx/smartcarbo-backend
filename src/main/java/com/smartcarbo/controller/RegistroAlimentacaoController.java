@@ -1,17 +1,10 @@
 package com.smartcarbo.controller;
 
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import com.smartcarbo.model.entity.RegistroAlimentacao;
 import com.smartcarbo.model.service.RegistroAlimentacaoService;
@@ -20,36 +13,60 @@ import com.smartcarbo.model.service.RegistroAlimentacaoService;
 @RequestMapping("/api/v1/registros-alimentacao")
 public class RegistroAlimentacaoController {
 
-    @Autowired
-    private RegistroAlimentacaoService registroAlimentacaoService;
+    private final RegistroAlimentacaoService registroAlimentacaoService;
+
+    public RegistroAlimentacaoController(
+            RegistroAlimentacaoService registroAlimentacaoService) {
+        this.registroAlimentacaoService = registroAlimentacaoService;
+    }
 
     @GetMapping
-    public List<RegistroAlimentacao> listar() {
-        return registroAlimentacaoService.listar();
+    public ResponseEntity<List<RegistroAlimentacao>> listar() {
+        return ResponseEntity.ok(registroAlimentacaoService.listar());
     }
 
     @PostMapping
-    public RegistroAlimentacao salvar(
-            @RequestBody RegistroAlimentacao registro) {
-        return registroAlimentacaoService.salvar(registro);
+    public ResponseEntity<RegistroAlimentacao> salvar(
+            @RequestBody(required = false) RegistroAlimentacao registro) {
+
+        if (registro == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        RegistroAlimentacao novoRegistro =
+                registroAlimentacaoService.salvar(registro);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(novoRegistro);
     }
 
     @GetMapping("/{id}")
-    public Optional<RegistroAlimentacao> buscarPorId(
+    public ResponseEntity<RegistroAlimentacao> buscarPorId(
             @PathVariable Long id) {
-        return registroAlimentacaoService.buscarPorId(id);
+
+        return registroAlimentacaoService.buscarPorId(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
-    public RegistroAlimentacao atualizar(
+    public ResponseEntity<RegistroAlimentacao> atualizar(
             @PathVariable Long id,
-            @RequestBody RegistroAlimentacao registro) {
-        return registroAlimentacaoService.atualizar(id, registro);
+            @RequestBody(required = false) RegistroAlimentacao registro) {
+
+        if (registro == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return ResponseEntity.ok(
+                registroAlimentacaoService.atualizar(id, registro)
+        );
     }
 
     @DeleteMapping("/{id}")
-    public void excluir(@PathVariable Long id) {
+    public ResponseEntity<Void> excluir(@PathVariable Long id) {
         registroAlimentacaoService.excluir(id);
+        return ResponseEntity.noContent().build();
     }
 }
-

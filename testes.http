@@ -1,142 +1,47 @@
-
-
-### LISTAR USUÁRIOS
-GET http://localhost:8080/api/v1/usuarios
-
-### CADASTRAR USUÁRIO
+### 1. Cadastrar usuário
 POST http://localhost:8080/api/v1/usuarios
 Content-Type: application/json
 
 {
-    "nome": "Teste REST Client",
-    "email": "restclient@smartcarbo.com",
-    "senha": "123456",
-    "tipoUsuario": "CLIENTE"
+  "nome": "Usuario Teste",
+  "email": "usuario.teste@example.com",
+  "senha": "Teste1234",
+  "dataNascimento": "2005-05-15",
+  "altura": 1.70,
+  "peso": 65.0,
+  "sexo": "Outro",
+  "objetivo": "Manter peso",
+  "nivelAtividade": "Moderado",
+  "restricoes": "Nenhuma",
+  "condicaoSaude": "Nenhuma",
+  "avaliacaoAlimentacao": 3
 }
 
-### BUSCAR USUÁRIO
-GET http://localhost:8080/api/v1/usuarios/10008
+### 2. Listar usuários
+GET http://localhost:8080/api/v1/usuarios
 
+### 3. Buscar usuário por ID
+GET http://localhost:8080/api/v1/usuarios/1
 
-### ATUALIZAR USUÁRIO
-PUT http://localhost:8080/api/v1/usuarios/10008
+### 4. Atualizar usuário
+PUT http://localhost:8080/api/v1/usuarios/1
 Content-Type: application/json
 
 {
-    "nome": "Usuario REST Atualizado",
-    "email": "restatualizado@smartcarbo.com",
-    "senha": "123456",
-    "tipoUsuario": "CLIENTE"
+  "nome": "Usuario Atualizado",
+  "email": "usuario.teste@example.com",
+  "peso": 67.0
 }
 
-### EXCLUIR USUÁRIO
-DELETE http://localhost:8080/api/v1/usuarios/10008
-
-### LOGIN
-POST http://localhost:8080/api/auth/login
+### 5. Tentar cadastrar com e-mail inválido
+POST http://localhost:8080/api/v1/usuarios
 Content-Type: application/json
 
 {
-    "email": "teste@smartcarbo.com",
-    "senha": "123456"
+  "nome": "Usuario Invalido",
+  "email": "email-invalido",
+  "senha": "Teste1234"
 }
 
-### LISTAR ATIVIDADES FÍSICAS
-GET http://localhost:8080/api/v1/atividades-fisicas
-
-#### CADASTRAR ATIVIDADE FÍSICA
-POST http://localhost:8080/api/v1/atividades-fisicas
-Content-Type: application/json
-
-{
-    "nome": "Corrida Leve",
-    "descricao": "Corrida de baixa intensidade",
-    "duracao": 30,
-    "calorias": 250
-}
-
-### BUSCAR ATIVIDADE
-GET http://localhost:8080/api/v1/atividades-fisicas/3
-
-### ATUALIZAR ATIVIDADE FÍSICA
-PUT http://localhost:8080/api/v1/atividades-fisicas/3
-Content-Type: application/json
-
-{
-    "nome": "Corrida Moderada",
-    "descricao": "Corrida de intensidade moderada",
-    "duracao": 40,
-    "calorias": 350
-}
-
-### EXCLUIR ATIVIDADE FÍSICA
-DELETE http://localhost:8080/api/v1/atividades-fisicas/3
-
-
-### LISTAR REGISTROS DE ALIMENTAÇÃO
-GET http://localhost:8080/api/v1/registros-alimentacao
-
-### CADASTRAR REGISTRO DE ALIMENTAÇÃO
-POST http://localhost:8080/api/v1/registros-alimentacao
-Content-Type: application/json
-
-{
-    "nomeAlimento": "Arroz integral",
-    "quantidade": 120.0,
-    "calorias": 150.0,
-    "carboidratos": 31.0,
-    "proteinas": 3.5,
-    "gorduras": 0.5,
-    "fibras": 2.0,
-    "sodio": 2.0,
-    "tipoRefeicao": "Almoço",
-    "dataHora": "2026-09-30T12:30:00",
-    "usuarioId": 10006
-}
-
-### Listar registros de alimentação
-GET http://localhost:8080/api/v1/registros-alimentacao
-Accept: application/json
-
-### Criar registro de alimentação
-POST http://localhost:8080/api/v1/registros-alimentacao
-Content-Type: application/json
-
-{
-  "nomeAlimento": "Feijão carioca",
-  "quantidade": 100,
-  "calorias": 76,
-  "carboidratos": 14,
-  "proteinas": 4.8,
-  "gorduras": 0.5,
-  "fibras": 8.5,
-  "sodio": 2,
-  "tipoRefeicao": "Almoço",
-  "dataHora": "2026-10-03T12:30:00",
-  "usuarioId": 10006
-}
-
-### Buscar registro de alimentação por ID
-GET http://localhost:8080/api/v1/registros-alimentacao/3
-Accept: application/json
-
-### Atualizar registro de alimentação
-PUT http://localhost:8080/api/v1/registros-alimentacao/3
-Content-Type: application/json
-
-{
-  "nomeAlimento": "Feijão preto",
-  "quantidade": 120,
-  "calorias": 91,
-  "carboidratos": 16,
-  "proteinas": 5.5,
-  "gorduras": 0.6,
-  "fibras": 9.0,
-  "sodio": 3,
-  "tipoRefeicao": "Almoço",
-  "dataHora": "2026-10-03T12:30:00",
-  "usuarioId": 10006
-}
-
-### Excluir registro de alimentação
-DELETE http://localhost:8080/api/v1/registros-alimentacao/3
+### 6. Excluir usuário
+DELETE http://localhost:8080/api/v1/usuarios/1
