@@ -6,41 +6,66 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.smartcarbo.model.entity.RegistroAlimentacao;
+import com.smartcarbo.model.repository.RefeicaoRepository;
 import com.smartcarbo.model.repository.RegistroAlimentacaoRepository;
 
 @Service
 public class RegistroAlimentacaoService {
 
     private final RegistroAlimentacaoRepository repository;
+    private final RefeicaoRepository refeicaoRepository;
 
     public RegistroAlimentacaoService(
-            RegistroAlimentacaoRepository repository) {
+            RegistroAlimentacaoRepository repository,
+            RefeicaoRepository refeicaoRepository) {
         this.repository = repository;
+        this.refeicaoRepository = refeicaoRepository;
     }
-
-    // Métodos usados pelo usuário autenticado
 
     public List<RegistroAlimentacao> listarPorUsuario(Long usuarioId) {
         validarUsuarioId(usuarioId);
         return repository.findAllByUsuarioIdOrderByDataHoraDesc(usuarioId);
     }
 
+    public List<RegistroAlimentacao> listarPorUsuarioEPeriodo(
+            Long usuarioId,
+            LocalDateTime inicio,
+            LocalDateTime fim) {
+
+        validarUsuarioId(usuarioId);
+
+        if (inicio == null || fim == null || !inicio.isBefore(fim)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "O período informado é inválido.");
+        }
+
+        return repository
+                .findAllByUsuarioIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
+                        usuarioId, inicio, fim);
+    }
+
     public RegistroAlimentacao buscarPorIdEUsuario(
             Long id, Long usuarioId) {
+
         validarId(id);
         validarUsuarioId(usuarioId);
 
         return repository.findByIdAndUsuarioId(id, usuarioId)
-                .orElseThrow(() -> naoEncontrado());
+                .orElseThrow(this::naoEncontrado);
     }
 
+    @Transactional
     public RegistroAlimentacao salvarParaUsuario(
             RegistroAlimentacao registro, Long usuarioId) {
+
         validarUsuarioId(usuarioId);
         validarDados(registro);
+        validarRefeicao(registro.getRefeicaoId(), usuarioId);
 
         registro.setId(null);
         registro.setUsuarioId(usuarioId);
@@ -52,8 +77,12 @@ public class RegistroAlimentacaoService {
         return repository.save(registro);
     }
 
+    @Transactional
     public RegistroAlimentacao atualizarParaUsuario(
-            Long id, RegistroAlimentacao registro, Long usuarioId) {
+            Long id,
+            RegistroAlimentacao registro,
+            Long usuarioId) {
+
         validarId(id);
         validarUsuarioId(usuarioId);
         validarDados(registro);
@@ -61,7 +90,14 @@ public class RegistroAlimentacaoService {
         RegistroAlimentacao existente =
                 buscarPorIdEUsuario(id, usuarioId);
 
-        existente.setNomeAlimento(registro.getNomeAlimento());
+        // Se o cliente informar um novo vínculo, ele precisa ser válido.
+        // Se não informar, o vínculo existente é preservado.
+        if (registro.getRefeicaoId() != null) {
+            validarRefeicao(registro.getRefeicaoId(), usuarioId);
+            existente.setRefeicaoId(registro.getRefeicaoId());
+        }
+
+        existente.setNomeAlimento(registro.getNomeAlimento().trim());
         existente.setQuantidade(registro.getQuantidade());
         existente.setTipoRefeicao(registro.getTipoRefeicao());
         existente.setCalorias(registro.getCalorias());
@@ -75,10 +111,11 @@ public class RegistroAlimentacaoService {
             existente.setDataHora(registro.getDataHora());
         }
 
-        // O usuarioId existente não é alterado.
+        // Não permite alterar o usuário proprietário pelo corpo da requisição.
         return repository.save(existente);
     }
 
+    @Transactional
     public void excluirParaUsuario(Long id, Long usuarioId) {
         validarId(id);
         validarUsuarioId(usuarioId);
@@ -90,66 +127,20 @@ public class RegistroAlimentacaoService {
         repository.deleteByIdAndUsuarioId(id, usuarioId);
     }
 
-    // Métodos antigos mantidos para compatibilidade
-
-    public RegistroAlimentacao salvar(RegistroAlimentacao registro) {
-        validarDados(registro);
-
-        registro.setId(null);
-
-        if (registro.getDataHora() == null) {
-            registro.setDataHora(LocalDateTime.now());
+    private void validarRefeicao(Long refeicaoId, Long usuarioId) {
+        // NULL é permitido temporariamente para manter compatibilidade
+        // com os registros antigos durante a migração.
+        if (refeicaoId == null) {
+            return;
         }
 
-        return repository.save(registro);
-    }
-
-    public List<RegistroAlimentacao> listar() {
-        return repository.findAll();
-    }
-
-    public java.util.Optional<RegistroAlimentacao> buscarPorId(Long id) {
-        validarId(id);
-        return repository.findById(id);
-    }
-
-    public RegistroAlimentacao atualizar(
-            Long id, RegistroAlimentacao registro) {
-        validarId(id);
-        validarDados(registro);
-
-        RegistroAlimentacao existente = repository.findById(id)
-                .orElseThrow(() -> naoEncontrado());
-
-        copiarDados(registro, existente);
-        existente.setUsuarioId(registro.getUsuarioId());
-
-        return repository.save(existente);
-    }
-
-    public void excluir(Long id) {
-        validarId(id);
-
-        if (!repository.existsById(id)) {
-            throw naoEncontrado();
+        if (refeicaoId <= 0
+                || !refeicaoRepository.existsByIdAndUsuarioId(
+                        refeicaoId, usuarioId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "A refeição informada não existe ou não pertence ao usuário.");
         }
-
-        repository.deleteById(id);
-    }
-
-    private void copiarDados(
-            RegistroAlimentacao origem,
-            RegistroAlimentacao destino) {
-        destino.setNomeAlimento(origem.getNomeAlimento());
-        destino.setQuantidade(origem.getQuantidade());
-        destino.setTipoRefeicao(origem.getTipoRefeicao());
-        destino.setCalorias(origem.getCalorias());
-        destino.setCarboidratos(origem.getCarboidratos());
-        destino.setProteinas(origem.getProteinas());
-        destino.setGorduras(origem.getGorduras());
-        destino.setFibras(origem.getFibras());
-        destino.setSodio(origem.getSodio());
-        destino.setDataHora(origem.getDataHora());
     }
 
     private void validarDados(RegistroAlimentacao registro) {
@@ -180,6 +171,13 @@ public class RegistroAlimentacaoService {
         validarNaoNegativo(registro.getGorduras(), "gorduras");
         validarNaoNegativo(registro.getFibras(), "fibras");
         validarNaoNegativo(registro.getSodio(), "sódio");
+
+        if (registro.getTipoRefeicao() != null
+                && registro.getTipoRefeicao().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "O tipo de refeição não pode estar vazio.");
+        }
     }
 
     private void validarNaoNegativo(Double valor, String campo) {

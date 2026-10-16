@@ -42,6 +42,9 @@ public class GlobalExceptionHandler {
         resposta.put("status", HttpStatus.BAD_REQUEST.value());
         resposta.put("erro", "Corpo da requisição inválido ou em formato incorreto.");
 
+        Throwable causa = exception.getMostSpecificCause();
+        resposta.put("detalhes", causa.getMessage());
+
         return ResponseEntity.badRequest().body(resposta);
     }
 

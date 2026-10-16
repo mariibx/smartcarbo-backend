@@ -1,63 +1,63 @@
+@baseUrl = http://localhost:8080
 
-### 1. Cadastrar usuário
-POST http://localhost:8080/api/v1/usuarios
+# SMART CARBO - TESTES DA API (REST Client)
+# Execute o login primeiro. Ajuste email/senha para uma conta existente.
+# As exclusoes estao comentadas no final para evitar apagar dados por acidente.
+
+### 1. Login
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "gilmar@gmail.com",
+  "senha": "Teste@123456"
+}
+
+###
+@token = {{login.response.body.token}}
+
+### 2. Login sem dados (esperado 4xx)
+POST {{baseUrl}}/api/auth/signin
+Content-Type: application/json
+
+{}
+
+### 3. Login com senha incorreta (esperado 401)
+POST {{baseUrl}}/api/auth/signin
+Content-Type: application/json
+
+{
+  "email": "gilmar@gmail.com",
+  "senha": "SenhaIncorreta@123"
+}
+
+# ============================================================
+# USUARIOS
+# ============================================================
+
+### 4. Cadastrar usuario de teste (troque o email se ja existir)
+# @name cadastrarUsuario
+POST {{baseUrl}}/api/v1/usuarios
 Content-Type: application/json
 
 {
   "nome": "Usuario Teste",
-  "email": "usuario.teste@example.com",
-  "senha": "Teste1234",
+  "email": "teste.smartcarbo@example.com",
+  "senha": "Teste@123456",
   "dataNascimento": "2005-05-15",
   "altura": 1.70,
   "peso": 65.0,
-  "sexo": "Outro",
+  "sexo": "Feminino",
   "objetivo": "Manter peso",
   "nivelAtividade": "Moderado",
   "restricoes": "Nenhuma",
   "condicaoSaude": "Nenhuma",
-  "avaliacaoAlimentacao": 3
+  "avaliacaoAlimentacao": 7
 }
 
-###
-
-### 2. Fazer login
-POST http://localhost:8080/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "usuario.teste@example.com",
-  "senha": "Teste1234"
-}
-
-###
-
-### 3. Listar usuários (requer JWT)
-GET http://localhost:8080/api/v1/usuarios
-Authorization: Bearer COLE_SEU_TOKEN_AQUI
-
-###
-
-### 4. Buscar usuário por ID (requer JWT)
-GET http://localhost:8080/api/v1/usuarios/1
-Authorization: Bearer COLE_SEU_TOKEN_AQUI
-
-###
-
-### 5. Atualizar usuário (requer JWT)
-PUT http://localhost:8080/api/v1/usuarios/1
-Content-Type: application/json
-Authorization: Bearer COLE_SEU_TOKEN_AQUI
-
-{
-  "nome": "Usuario Atualizado",
-  "email": "usuario.teste@example.com",
-  "peso": 67.0
-}
-
-###
-
-### 6. Cadastrar usuário com e-mail inválido
-POST http://localhost:8080/api/v1/usuarios
+### 5. Cadastro com email invalido (esperado 4xx)
+POST {{baseUrl}}/api/v1/usuarios
 Content-Type: application/json
 
 {
@@ -66,23 +66,277 @@ Content-Type: application/json
   "senha": "Teste1234"
 }
 
-###
-
-### 7. Excluir usuário (requer JWT)
-DELETE http://localhost:8080/api/v1/usuarios/1
-Authorization: Bearer COLE_SEU_TOKEN_AQUI
-
-____________________________________
-
-
-### Teste A - Login sem dados
-POST http://localhost:8080/api/auth/login
+### 6. Cadastro duplicado (esperado 4xx)
+POST {{baseUrl}}/api/v1/usuarios
 Content-Type: application/json
 
-{}
+{
+  "nome": "Usuario Duplicado",
+  "email": "teste.smartcarbo@example.com",
+  "senha": "OutraSenha@123",
+  "dataNascimento": "2005-05-15",
+  "altura": 1.70,
+  "peso": 65.0,
+  "sexo": "Feminino",
+  "objetivo": "Manter peso",
+  "nivelAtividade": "Moderado",
+  "restricoes": "Nenhuma",
+  "condicaoSaude": "Nenhuma",
+  "avaliacaoAlimentacao": 7
+}
+
+### 7. Listar usuarios (JWT)
+GET {{baseUrl}}/api/v1/usuarios
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 8. Consultar usuario autenticado (JWT)
+GET {{baseUrl}}/api/v1/usuarios/me
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 9. Consultar usuario por ID (ajuste o ID)
+GET {{baseUrl}}/api/v1/usuarios/1
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 10. Consultar /me sem token (esperado 401/403)
+GET {{baseUrl}}/api/v1/usuarios/me
+Accept: application/json
+
+### 11. Listar usuarios sem token (esperado 401/403)
+GET {{baseUrl}}/api/v1/usuarios
+Accept: application/json
+
+### 12. Atualizar usuario (use ID pertencente ao usuario autenticado)
+PUT {{baseUrl}}/api/v1/usuarios/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nome": "Usuario Teste Atualizado",
+  "email": "teste.smartcarbo@example.com",
+  "dataNascimento": "2005-05-15",
+  "altura": 1.70,
+  "peso": 66.0,
+  "sexo": "Feminino",
+  "objetivo": "Manter peso",
+  "nivelAtividade": "Moderado",
+  "restricoes": "Nenhuma",
+  "condicaoSaude": "Nenhuma",
+  "avaliacaoAlimentacao": 7
+}
+
+# ============================================================
+# REFEICOES
+# ============================================================
+
+### 13. Listar refeicoes
+GET {{baseUrl}}/api/v1/refeicoes
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 14. Listar refeicoes por data
+GET {{baseUrl}}/api/v1/refeicoes?data=2026-10-15
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 15. Criar refeicao
+# @name criarRefeicao
+POST {{baseUrl}}/api/v1/refeicoes
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nome": "Cafe da manha - teste REST",
+  "descricao": "Refeicao criada pelo REST Client",
+  "dataRefeicao": "2026-10-15"
+}
 
 ###
+@refeicaoId = {{criarRefeicao.response.body.id}}
 
-### Teste B - Listar usuários sem token
-GET http://localhost:8080/api/v1/usuarios
+### 16. Consultar refeicao criada
+GET {{baseUrl}}/api/v1/refeicoes/{{refeicaoId}}
+Accept: application/json
+Authorization: Bearer {{token}}
 
+### 17. Atualizar refeicao
+PUT {{baseUrl}}/api/v1/refeicoes/{{refeicaoId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nome": "Cafe da manha - atualizado",
+  "descricao": "Teste de atualizacao",
+  "dataRefeicao": "2026-10-15"
+}
+
+# ============================================================
+# REGISTROS DE ALIMENTACAO
+# ============================================================
+
+### 18. Listar registros alimentares
+GET {{baseUrl}}/api/v1/registros-alimentacao
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 19. Listar registros alimentares por data
+GET {{baseUrl}}/api/v1/registros-alimentacao?data=2026-10-15
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 20. Criar registro alimentar vinculado a refeicao
+# @name criarRegistroAlimentar
+POST {{baseUrl}}/api/v1/registros-alimentacao
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nomeAlimento": "Banana prata - teste REST",
+  "quantidade": 1.0,
+  "tipoRefeicao": "Cafe da manha",
+  "calorias": 89.0,
+  "carboidratos": 23.0,
+  "proteinas": 1.1,
+  "gorduras": 0.3,
+  "fibras": 2.0,
+  "sodio": 1.0,
+  "dataHora": "2026-10-15T08:00:00",
+  "refeicaoId": {{refeicaoId}}
+}
+
+###
+@registroAlimentacaoId = {{criarRegistroAlimentar.response.body.id}}
+
+### 21. Consultar registro alimentar criado
+GET {{baseUrl}}/api/v1/registros-alimentacao/{{registroAlimentacaoId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 22. Atualizar registro alimentar
+PUT {{baseUrl}}/api/v1/registros-alimentacao/{{registroAlimentacaoId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nomeAlimento": "Banana prata atualizada",
+  "quantidade": 1.0,
+  "tipoRefeicao": "Cafe da manha",
+  "calorias": 90.0,
+  "carboidratos": 23.0,
+  "proteinas": 1.1,
+  "gorduras": 0.3,
+  "fibras": 2.0,
+  "sodio": 1.0,
+  "dataHora": "2026-10-15T08:00:00",
+  "refeicaoId": {{refeicaoId}}
+}
+
+### 23. Cadastro alimentar sem token (esperado 401/403)
+POST {{baseUrl}}/api/v1/registros-alimentacao
+Content-Type: application/json
+
+{
+  "nomeAlimento": "Teste sem token",
+  "quantidade": 1.0,
+  "tipoRefeicao": "Lanche",
+  "calorias": 50.0,
+  "carboidratos": 10.0,
+  "proteinas": 1.0,
+  "gorduras": 0.5,
+  "fibras": 1.0,
+  "sodio": 1.0,
+  "dataHora": "2026-10-15T15:00:00"
+}
+
+# ============================================================
+# HISTORICO DE PESO
+# ============================================================
+
+### 24. Listar historico de peso
+GET {{baseUrl}}/api/v1/pesos
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 25. Criar registro de peso
+# @name criarPeso
+POST {{baseUrl}}/api/v1/pesos
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "peso": 65.50,
+  "data": "2026-10-15"
+}
+
+###
+@pesoId = {{criarPeso.response.body.id}}
+
+### 26. Consultar peso criado
+GET {{baseUrl}}/api/v1/pesos/{{pesoId}}
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 27. Atualizar peso
+PUT {{baseUrl}}/api/v1/pesos/{{pesoId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "peso": 64.80,
+  "data": "2026-10-15"
+}
+
+### 28. Peso invalido (esperado 400)
+POST {{baseUrl}}/api/v1/pesos
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "peso": 0,
+  "data": "2026-10-15"
+}
+
+### 29. Data futura (esperado 400)
+POST {{baseUrl}}/api/v1/pesos
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "peso": 65.0,
+  "data": "2099-01-01"
+}
+
+### 30. Listar pesos sem token (esperado 401/403)
+GET {{baseUrl}}/api/v1/pesos
+Accept: application/json
+
+### Excluir peso de teste
+DELETE {{baseUrl}}/api/v1/pesos/1
+Authorization: Bearer {{token}}
+
+# ============================================================
+# DASHBOARD
+# ============================================================
+
+### 31. Consultar resumo do Dashboard
+GET {{baseUrl}}/api/v1/dashboard/resumo
+Accept: application/json
+Authorization: Bearer {{token}}
+
+# ============================================================
+# LIMPEZA OPCIONAL - EXECUTE MANUALMENTE AO FINAL
+# ============================================================
+# Descomente apenas se quiser apagar os registros de teste.
+# ### Excluir registro alimentar
+# DELETE {{baseUrl}}/api/v1/registros-alimentacao/{{registroAlimentacaoId}}
+# Authorization: Bearer {{token}}
+#
+# ### Excluir refeicao (verifique se o backend remove alimentos vinculados)
+# DELETE {{baseUrl}}/api/v1/refeicoes/{{refeicaoId}}
+# Authorization: Bearer {{token}}
+#
+# ### Excluir historico de peso
+# DELETE {{baseUrl}}/api/v1/pesos/{{pesoId}}
+# Authorization: Bearer {{token}}

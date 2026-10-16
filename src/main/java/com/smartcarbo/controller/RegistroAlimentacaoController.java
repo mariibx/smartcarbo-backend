@@ -1,12 +1,24 @@
 
 package com.smartcarbo.controller;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.smartcarbo.model.entity.RegistroAlimentacao;
 import com.smartcarbo.model.entity.Usuario;
@@ -29,12 +41,30 @@ public class RegistroAlimentacaoController {
 
     @GetMapping
     public ResponseEntity<List<RegistroAlimentacao>> listar(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate data,
             Authentication authentication) {
 
         Usuario usuario = obterUsuario(authentication);
 
+        if (data == null) {
+            return ResponseEntity.ok(
+                    registroService.listarPorUsuario(usuario.getId()));
+        }
+
+        LocalDateTime inicio = data.atStartOfDay();
+        LocalDateTime fim = data.plusDays(1).atStartOfDay();
+
         return ResponseEntity.ok(
-                registroService.listarPorUsuario(usuario.getId()));
+                registroService.listarPorUsuarioEPeriodo(
+                        usuario.getId(), inicio, fim));
+    }
+
+    // Compatibilidade com chamadas Java existentes.
+    public ResponseEntity<List<RegistroAlimentacao>> listar(
+            Authentication authentication) {
+        return listar(null, authentication);
     }
 
     @PostMapping
@@ -94,7 +124,8 @@ public class RegistroAlimentacaoController {
                 || authentication.getName() == null
                 || authentication.getName().isBlank()
                 || "anonymousUser".equals(authentication.getName())) {
-            throw new org.springframework.web.server.ResponseStatusException(
+
+            throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "É necessário estar autenticado.");
         }

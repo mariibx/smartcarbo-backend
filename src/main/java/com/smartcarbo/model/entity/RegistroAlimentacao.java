@@ -1,13 +1,17 @@
+
 package com.smartcarbo.model.entity;
 
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "RegistroAlimentacao", schema = "dbo")
 public class RegistroAlimentacao {
 
     @Id
@@ -35,6 +39,12 @@ public class RegistroAlimentacao {
     private LocalDateTime dataHora;
 
     private Long usuarioId;
+
+    @Column(name = "refeicaoId")
+    private Long refeicaoId;
+
+    public RegistroAlimentacao() {
+    }
 
     public Long getId() {
         return id;
@@ -130,5 +140,13 @@ public class RegistroAlimentacao {
 
     public void setUsuarioId(Long usuarioId) {
         this.usuarioId = usuarioId;
+    }
+
+    public Long getRefeicaoId() {
+        return refeicaoId;
+    }
+
+    public void setRefeicaoId(Long refeicaoId) {
+        this.refeicaoId = refeicaoId;
     }
 }

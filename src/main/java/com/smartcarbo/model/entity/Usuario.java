@@ -4,6 +4,7 @@ import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -16,21 +17,48 @@ public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
+    @Column(name = "nome")
     private String nome;
+
+    @Column(name = "email")
     private String email;
+
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Column(name = "senha")
     private String senha;
+
+    @Column(name = "dataNascimento")
     private LocalDate dataNascimento;
+
+    @Column(name = "altura")
     private Double altura;
+
+    @Column(name = "peso")
     private Double peso;
+
+    @Column(name = "sexo")
     private String sexo;
+
+    @Column(name = "objetivo")
     private String objetivo;
+
+    @Column(name = "nivelAtividade")
     private String nivelAtividade;
+
+    @Column(name = "restricoes")
     private String restricoes;
+
+    @Column(name = "condicaoSaude")
     private String condicaoSaude;
+
+    @Column(name = "avaliacaoAlimentacao")
     private Integer avaliacaoAlimentacao;
+
+    public Usuario() {
+    }
 
     public Long getId() {
         return id;
@@ -76,7 +104,7 @@ public class Usuario {
         return altura;
     }
 
-    public void setAltura(Double  altura) {
+    public void setAltura(Double altura) {
         this.altura = altura;
     }
 
@@ -135,6 +163,4 @@ public class Usuario {
     public void setAvaliacaoAlimentacao(Integer avaliacaoAlimentacao) {
         this.avaliacaoAlimentacao = avaliacaoAlimentacao;
     }
-
 }
-
