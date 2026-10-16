@@ -1,6 +1,7 @@
 
 package com.smartcarbo.model.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -11,30 +12,35 @@ import org.springframework.web.server.ResponseStatusException;
 import com.smartcarbo.dto.PesoRequest;
 import com.smartcarbo.dto.PesoResponse;
 import com.smartcarbo.model.entity.HistoricoPeso;
+import com.smartcarbo.model.entity.Usuario;
 import com.smartcarbo.model.repository.PesoRepository;
+import com.smartcarbo.model.repository.UsuarioRepository;
 
 @Service
 public class PesoService {
 
     private final PesoRepository repository;
+    private final UsuarioRepository usuarioRepository;
 
-    public PesoService(PesoRepository repository) {
+    public PesoService(
+            PesoRepository repository,
+            UsuarioRepository usuarioRepository) {
         this.repository = repository;
+        this.usuarioRepository = usuarioRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<PesoResponse> listar(Long usuarioId) {
         validarUsuarioId(usuarioId);
 
-        return repository
-                .findAllByUsuarioIdOrderByDataAsc(usuarioId)
+        return repository.findAllByUsuarioIdOrderByDataAsc(usuarioId)
                 .stream()
                 .map(this::paraResponse)
                 .toList();
     }
 
-    public PesoResponse buscarPorId(
-            Long id, Long usuarioId) {
-
+    @Transactional(readOnly = true)
+    public PesoResponse buscarPorId(Long id, Long usuarioId) {
         validarId(id);
         validarUsuarioId(usuarioId);
 
@@ -46,23 +52,30 @@ public class PesoService {
     }
 
     @Transactional
-    public PesoResponse cadastrar(
-            PesoRequest request, Long usuarioId) {
-
+    public PesoResponse cadastrar(PesoRequest request, Long usuarioId) {
         validarUsuarioId(usuarioId);
         validarDados(request);
 
-        HistoricoPeso registro = new HistoricoPeso();
-        registro.setUsuarioId(usuarioId);
-        registro.setPeso(request.peso());
-        registro.setData(request.data());
+        HistoricoPeso registro = repository
+                .findByUsuarioIdAndData(usuarioId, request.data())
+                .orElseGet(HistoricoPeso::new);
 
-        return paraResponse(repository.save(registro));
+        registro.setUsuarioId(usuarioId);
+        registro.setData(request.data());
+        registro.setPeso(request.peso());
+
+        HistoricoPeso salvo = repository.saveAndFlush(registro);
+
+        sincronizarPesoPerfil(usuarioId);
+
+        return paraResponse(salvo);
     }
 
     @Transactional
     public PesoResponse atualizar(
-            Long id, PesoRequest request, Long usuarioId) {
+            Long id,
+            PesoRequest request,
+            Long usuarioId) {
 
         validarId(id);
         validarUsuarioId(usuarioId);
@@ -72,10 +85,23 @@ public class PesoService {
                 .findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(this::naoEncontrado);
 
+        repository.findByUsuarioIdAndData(usuarioId, request.data())
+                .filter(outro -> !outro.getId().equals(registro.getId()))
+                .ifPresent(outro -> {
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT,
+                            "Já existe uma medição para essa data. "
+                                    + "Edite o registro existente.");
+                });
+
         registro.setPeso(request.peso());
         registro.setData(request.data());
 
-        return paraResponse(repository.save(registro));
+        HistoricoPeso salvo = repository.saveAndFlush(registro);
+
+        sincronizarPesoPerfil(usuarioId);
+
+        return paraResponse(salvo);
     }
 
     @Transactional
@@ -88,6 +114,23 @@ public class PesoService {
         }
 
         repository.deleteByIdAndUsuarioId(id, usuarioId);
+        repository.flush();
+
+        sincronizarPesoPerfil(usuarioId);
+    }
+
+    private void sincronizarPesoPerfil(Long usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Usuário não encontrado."));
+
+        repository.findTopByUsuarioIdOrderByDataDesc(usuarioId)
+                .ifPresent(ultimoRegistro ->
+                        usuario.setPeso(ultimoRegistro.getPeso()));
+
+        // Se não houver histórico, preserva o peso já cadastrado no perfil.
+        usuarioRepository.save(usuario);
     }
 
     private void validarDados(PesoRequest request) {
@@ -112,8 +155,7 @@ public class PesoService {
                     "A data da medição é obrigatória.");
         }
 
-        if (request.data().isAfter(
-                java.time.LocalDate.now())) {
+        if (request.data().isAfter(LocalDate.now())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "A data não pode estar no futuro.");
@@ -136,8 +178,7 @@ public class PesoService {
         }
     }
 
-    private PesoResponse paraResponse(
-            HistoricoPeso registro) {
+    private PesoResponse paraResponse(HistoricoPeso registro) {
         return new PesoResponse(
                 registro.getId(),
                 registro.getPeso(),

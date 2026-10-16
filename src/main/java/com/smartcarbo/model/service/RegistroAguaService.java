@@ -3,6 +3,7 @@ package com.smartcarbo.model.service;
 
 import com.smartcarbo.model.entity.RegistroAgua;
 import com.smartcarbo.model.repository.RegistroAguaRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,8 +20,11 @@ public class RegistroAguaService {
         this.repository = repository;
     }
 
+    // Cadastrar consumo de água
     @Transactional
-    public RegistroAgua registrar(Long usuarioId, Integer quantidadeMl) {
+    public RegistroAgua registrar(
+            Long usuarioId, Integer quantidadeMl) {
+
         validarQuantidade(quantidadeMl);
 
         RegistroAgua registro = new RegistroAgua();
@@ -31,11 +35,14 @@ public class RegistroAguaService {
         return repository.save(registro);
     }
 
+    // Listar registros do usuário
     @Transactional(readOnly = true)
     public List<RegistroAgua> listar(Long usuarioId) {
-        return repository.findAllByUsuarioIdOrderByDataHoraDesc(usuarioId);
+        return repository
+                .findAllByUsuarioIdOrderByDataHoraDesc(usuarioId);
     }
 
+    // Buscar registro específico do usuário
     @Transactional(readOnly = true)
     public RegistroAgua buscarPorId(Long id, Long usuarioId) {
         return repository.findById(id)
@@ -46,9 +53,12 @@ public class RegistroAguaService {
                                 "Registro de água não encontrado."));
     }
 
+    // Atualizar quantidade consumida
     @Transactional
     public RegistroAgua atualizar(
-            Long id, Long usuarioId, Integer quantidadeMl) {
+            Long id,
+            Long usuarioId,
+            Integer quantidadeMl) {
 
         validarQuantidade(quantidadeMl);
 
@@ -58,12 +68,14 @@ public class RegistroAguaService {
         return repository.save(registro);
     }
 
+    // Excluir registro do usuário
     @Transactional
     public void excluir(Long id, Long usuarioId) {
         RegistroAgua registro = buscarPorId(id, usuarioId);
         repository.delete(registro);
     }
 
+    // Listar registros de um dia específico
     @Transactional(readOnly = true)
     public List<RegistroAgua> listarPorData(
             Long usuarioId, LocalDate data) {
@@ -76,15 +88,18 @@ public class RegistroAguaService {
                         usuarioId, inicio, fim);
     }
 
+    // Validar quantidade de água
     private void validarQuantidade(Integer quantidadeMl) {
         if (quantidadeMl == null
                 || quantidadeMl < 1
                 || quantidadeMl > 5000) {
+
             throw new IllegalArgumentException(
                     "A quantidade deve estar entre 1 e 5000 ml.");
         }
     }
 
+    // Exceção para registro não encontrado
     public static class RegistroNaoEncontradoException
             extends RuntimeException {
 

@@ -371,3 +371,132 @@ CREATE INDEX IX_RegistroAgua_Usuario_DataHora
 
 SELECT *
 FROM dbo.RegistroAgua
+
+SELECT
+    id,
+    usuarioId,
+    quantidadeMl,
+    dataHora
+FROM dbo.RegistroAgua
+WHERE id = 1;
+
+SELECT id, sexo, objetivo, nivelAtividade
+FROM Usuario;
+
+SELECT COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Usuario'
+ORDER BY ORDINAL_POSITION;
+
+SELECT
+    id,
+    nome,
+    sexo,
+    objetivo,
+    nivelAtividade
+FROM dbo.Usuario;
+
+
+SELECT
+    TABLE_SCHEMA,
+    TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_TYPE = 'BASE TABLE'
+ORDER BY TABLE_SCHEMA, TABLE_NAME;
+
+
+SELECT TOP 20 *
+FROM dbo.HistoricoPeso
+ORDER BY data DESC;
+
+
+SELECT
+    id,
+    usuarioId,
+    peso,
+    data
+FROM dbo.HistoricoPeso
+WHERE usuarioId = 2
+ORDER BY id DESC;
+
+
+-- 1. Conferir quais registros seriam removidos
+WITH Duplicados AS (
+    SELECT
+        id,
+        usuarioId,
+        peso,
+        data,
+        ROW_NUMBER() OVER (
+            PARTITION BY usuarioId, data
+            ORDER BY id DESC
+        ) AS ordem
+    FROM dbo.HistoricoPeso
+)
+SELECT id, usuarioId, peso, data
+FROM Duplicados
+WHERE ordem > 1
+ORDER BY usuarioId, data, id;
+
+-- Confira o resultado antes de continuar.
+
+-- 2. Remover duplicatas, mantendo o maior ID por usuário/dia
+BEGIN TRANSACTION;
+
+WITH Duplicados AS (
+    SELECT
+        id,
+        ROW_NUMBER() OVER (
+            PARTITION BY usuarioId, data
+            ORDER BY id DESC
+        ) AS ordem
+    FROM dbo.HistoricoPeso
+)
+DELETE FROM Duplicados
+WHERE ordem > 1;
+
+-- 3. Impedir novas duplicatas
+CREATE UNIQUE INDEX UX_HistoricoPeso_Usuario_Data
+ON dbo.HistoricoPeso (usuarioId, data);
+
+COMMIT TRANSACTION;
+
+
+SELECT id, usuarioId, peso, data
+FROM dbo.HistoricoPeso
+ORDER BY usuarioId, data, id DESC;
+
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = 'UX_HistoricoPeso_Usuario_Data'
+      AND object_id = OBJECT_ID('dbo.HistoricoPeso')
+)
+BEGIN
+    CREATE UNIQUE INDEX UX_HistoricoPeso_Usuario_Data
+    ON dbo.HistoricoPeso (usuarioId, data);
+END;
+
+SELECT id, nome, peso
+FROM dbo.usuario
+WHERE id = 2;
+
+SELECT id, usuarioId, peso, data
+FROM dbo.HistoricoPeso
+WHERE usuarioId = 2
+ORDER BY data DESC, id DESC;
+
+SELECT id, usuarioId, peso, data
+FROM dbo.HistoricoPeso
+WHERE usuarioId = 2
+ORDER BY data DESC, id DESC;
+
+SELECT id, nome, peso
+FROM dbo.usuario
+WHERE id = 2;
+
+SELECT id, usuarioId, peso, data
+FROM dbo.HistoricoPeso
+WHERE usuarioId = 2
+ORDER BY data DESC, id DESC;

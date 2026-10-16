@@ -1,9 +1,11 @@
+
 package com.smartcarbo.controller;
 
 import com.smartcarbo.dto.UsuarioAtualizacaoRequest;
 import com.smartcarbo.dto.UsuarioCadastroRequest;
 import com.smartcarbo.dto.UsuarioResponse;
 import com.smartcarbo.model.entity.Usuario;
+import com.smartcarbo.model.service.CalculoMetaCaloricaService;
 import com.smartcarbo.model.service.UsuarioService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -33,11 +35,17 @@ class UsuarioControllerTest {
     @Mock
     private UsuarioService usuarioService;
 
+    @Mock
+    private CalculoMetaCaloricaService calculoMetaCaloricaService;
+
     private UsuarioController controller;
 
     @BeforeEach
     void configurar() {
-        controller = new UsuarioController(usuarioService);
+        controller = new UsuarioController(
+                usuarioService,
+                calculoMetaCaloricaService
+        );
     }
 
     private Authentication autenticarComo(String email) {
@@ -45,9 +53,8 @@ class UsuarioControllerTest {
                 email,
                 null,
                 java.util.List.of(
-                        new org.springframework.security.core.authority.SimpleGrantedAuthority(
-                                "ROLE_USER"
-                        )
+                        new org.springframework.security.core.authority
+                                .SimpleGrantedAuthority("ROLE_USER")
                 )
         );
     }
@@ -97,9 +104,11 @@ class UsuarioControllerTest {
                 8
         );
 
-        when(usuarioService.salvar(any(Usuario.class))).thenReturn(usuario);
+        when(usuarioService.salvar(any(Usuario.class)))
+                .thenReturn(usuario);
 
-        ResponseEntity<UsuarioResponse> resposta = controller.cadastrar(request);
+        ResponseEntity<UsuarioResponse> resposta =
+                controller.cadastrar(request);
 
         assertEquals(HttpStatus.CREATED, resposta.getStatusCode());
         assertNotNull(resposta.getBody());
@@ -113,7 +122,8 @@ class UsuarioControllerTest {
     @Test
     void deveConsultarProprioPerfil() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);
@@ -131,7 +141,8 @@ class UsuarioControllerTest {
 
     @Test
     void deveRetornar404QuandoPerfilNaoExistir() {
-        Authentication authentication = autenticarComo("naoexiste@teste.com");
+        Authentication authentication =
+                autenticarComo("naoexiste@teste.com");
 
         when(usuarioService.buscarPorEmail("naoexiste@teste.com"))
                 .thenThrow(new ResponseStatusException(
@@ -150,7 +161,8 @@ class UsuarioControllerTest {
     @Test
     void deveBuscarProprioUsuarioPorId() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);
@@ -168,7 +180,8 @@ class UsuarioControllerTest {
     @Test
     void deveBloquearConsultaDeOutroUsuario() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);
@@ -185,7 +198,8 @@ class UsuarioControllerTest {
     @Test
     void deveRetornar404QuandoUsuarioNaoExistir() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);
@@ -203,12 +217,15 @@ class UsuarioControllerTest {
     @Test
     void deveAtualizarProprioUsuario() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);
-        when(usuarioService.atualizar(eq(1L), any(Usuario.class)))
-                .thenReturn(usuario);
+        when(usuarioService.atualizar(
+                eq(1L),
+                any(Usuario.class)
+        )).thenReturn(usuario);
 
         ResponseEntity<UsuarioResponse> resposta =
                 controller.atualizar(
@@ -221,13 +238,17 @@ class UsuarioControllerTest {
         assertNotNull(resposta.getBody());
         assertEquals(1L, resposta.getBody().id());
 
-        verify(usuarioService).atualizar(eq(1L), any(Usuario.class));
+        verify(usuarioService).atualizar(
+                eq(1L),
+                any(Usuario.class)
+        );
     }
 
     @Test
     void deveBloquearAtualizacaoDeOutroUsuario() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);
@@ -248,7 +269,8 @@ class UsuarioControllerTest {
     @Test
     void deveExcluirProprioUsuario() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);
@@ -263,7 +285,8 @@ class UsuarioControllerTest {
     @Test
     void deveBloquearExclusaoDeOutroUsuario() {
         Usuario usuario = criarUsuario();
-        Authentication authentication = autenticarComo("teste@teste.com");
+        Authentication authentication =
+                autenticarComo("teste@teste.com");
 
         when(usuarioService.buscarPorEmail("teste@teste.com"))
                 .thenReturn(usuario);

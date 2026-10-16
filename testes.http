@@ -11,7 +11,7 @@ Content-Type: application/json
 
 {
   "email": "gilmar@gmail.com",
-  "senha": "Teste@123456"
+  "senha": "T"
 }
 
 ###
@@ -44,7 +44,7 @@ Content-Type: application/json
 {
   "nome": "Usuario Teste",
   "email": "teste.smartcarbo@example.com",
-  "senha": "Teste@123456",
+  "senha": "",
   "dataNascimento": "2005-05-15",
   "altura": 1.70,
   "peso": 65.0,
@@ -63,7 +63,7 @@ Content-Type: application/json
 {
   "nome": "Usuario Invalido",
   "email": "email-invalido",
-  "senha": "Teste1234"
+  "senha": ""
 }
 
 ### 6. Cadastro duplicado (esperado 4xx)
@@ -73,7 +73,7 @@ Content-Type: application/json
 {
   "nome": "Usuario Duplicado",
   "email": "teste.smartcarbo@example.com",
-  "senha": "OutraSenha@123",
+  "senha": "",
   "dataNascimento": "2005-05-15",
   "altura": 1.70,
   "peso": 65.0,
@@ -266,8 +266,8 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "peso": 65.50,
-  "data": "2026-10-15"
+  "peso": 68,
+  "data": "2026-10-16"
 }
 
 ###
@@ -340,3 +340,46 @@ Authorization: Bearer {{token}}
 # ### Excluir historico de peso
 # DELETE {{baseUrl}}/api/v1/pesos/{{pesoId}}
 # Authorization: Bearer {{token}}
+
+________________________________________________________________________________________
+
+
+### Registrar consumo de água
+POST {{baseUrl}}/api/v1/agua
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantidadeMl": 250
+}
+
+### Listar registros de água
+GET {{baseUrl}}/api/v1/agua
+Authorization: Bearer {{token}}
+
+### Consultar consumo de um dia
+GET {{baseUrl}}/api/v1/agua/data/2026-10-15
+Authorization: Bearer {{token}}
+
+### Consultar registro por ID
+GET {{baseUrl}}/api/v1/agua/1
+Authorization: Bearer {{token}}
+
+### Atualizar consumo
+PUT {{baseUrl}}/api/v1/agua/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantidadeMl": 500
+}
+
+### Excluir registro
+DELETE {{baseUrl}}/api/v1/agua/1
+Authorization: Bearer {{token}}
+
+GET http://localhost:8080/api/v1/usuarios/me/meta-calorica
+Authorization: Bearer 
+
+GET http://localhost:8080/api/v1/dashboard/calorias?inicio=2026-10-01&fim=2026-10-15
+Authorization: Bearer {{token}}
