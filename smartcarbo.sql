@@ -1,4 +1,4 @@
--- 1. Criar o banco, caso ainda não exista
+
 IF DB_ID(N'smartcarbo') IS NULL
 BEGIN
     CREATE DATABASE smartcarbo;
@@ -8,7 +8,7 @@ GO
 USE smartcarbo;
 GO
 
--- 2. Tabela de usuários
+-- Tabela de usuários
 IF OBJECT_ID(N'dbo.usuario', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.usuario
@@ -31,7 +31,7 @@ BEGIN
 END;
 GO
 
--- 3. Tabela de refeições
+-- Tabela de refeições
 IF OBJECT_ID(N'dbo.Refeicao', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Refeicao
@@ -48,7 +48,7 @@ BEGIN
 END;
 GO
 
--- 4. Tabela de registros alimentares
+-- Tabela de registros alimentares
 IF OBJECT_ID(N'dbo.RegistroAlimentacao', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.RegistroAlimentacao
@@ -75,7 +75,7 @@ BEGIN
 END;
 GO
 
--- 5. Tabela de atividades físicas (catálogo de atividades)
+-- Tabela de atividades físicas (catálogo de atividades)
 IF OBJECT_ID(N'dbo.atividade_fisica', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.atividade_fisica
@@ -90,7 +90,7 @@ BEGIN
 END;
 GO
 
--- 6. Tabela de histórico de peso
+-- Tabela de histórico de peso
 IF OBJECT_ID(N'dbo.HistoricoPeso', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.HistoricoPeso
@@ -108,7 +108,7 @@ BEGIN
 END;
 GO
 
--- 7. Tabela de registros de consumo de água
+-- Tabela de registros de consumo de água
 IF OBJECT_ID(N'dbo.RegistroAgua', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.RegistroAgua
@@ -127,7 +127,7 @@ BEGIN
 END;
 GO
 
--- 8. Índices para consultas frequentes e integridade dos dados
+-- Índices para consultas frequentes e integridade dos dados
 IF NOT EXISTS
 (
     SELECT 1 FROM sys.indexes
@@ -152,14 +152,96 @@ BEGIN
 END;
 GO
 
--- 9. Conferência: tabelas do banco
+-- Índice único filtrado para evitar e-mails duplicados preenchidos.
+-- Valores NULL não entram no índice; validação de e-mail continua no backend.
+IF NOT EXISTS
+(
+    SELECT 1 FROM sys.indexes
+    WHERE name = N'UX_usuario_email'
+      AND object_id = OBJECT_ID(N'dbo.usuario')
+)
+BEGIN
+    CREATE UNIQUE INDEX UX_usuario_email
+        ON dbo.usuario (email)
+        WHERE email IS NOT NULL;
+END;
+GO
+
+-- Tabelas da Comunidade (publicações, curtidas e pessoas seguidas)
+IF OBJECT_ID(N'dbo.PublicacaoComunidade', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PublicacaoComunidade
+    (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        usuarioId BIGINT NOT NULL,
+        texto NVARCHAR(500) NULL,
+        imagem NVARCHAR(MAX) NULL,
+        categoria NVARCHAR(80) NOT NULL,
+        criadoEm DATETIME2 NOT NULL CONSTRAINT DF_PublicacaoComunidade_CriadoEm DEFAULT SYSDATETIME(),
+        CONSTRAINT PK_PublicacaoComunidade PRIMARY KEY (id),
+        CONSTRAINT FK_PublicacaoComunidade_Usuario FOREIGN KEY (usuarioId) REFERENCES dbo.usuario(id),
+        CONSTRAINT CK_PublicacaoComunidade_Conteudo CHECK (LEN(LTRIM(RTRIM(ISNULL(texto, N'')))) > 0 OR imagem IS NOT NULL)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.CurtidaPublicacao', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CurtidaPublicacao
+    (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        publicacaoId BIGINT NOT NULL,
+        usuarioId BIGINT NOT NULL,
+        criadoEm DATETIME2 NOT NULL CONSTRAINT DF_CurtidaPublicacao_CriadoEm DEFAULT SYSDATETIME(),
+        CONSTRAINT PK_CurtidaPublicacao PRIMARY KEY (id),
+        CONSTRAINT FK_CurtidaPublicacao_Publicacao FOREIGN KEY (publicacaoId) REFERENCES dbo.PublicacaoComunidade(id),
+        CONSTRAINT FK_CurtidaPublicacao_Usuario FOREIGN KEY (usuarioId) REFERENCES dbo.usuario(id)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_CurtidaPublicacao_Publicacao_Usuario' AND object_id = OBJECT_ID(N'dbo.CurtidaPublicacao'))
+BEGIN
+    CREATE UNIQUE INDEX UX_CurtidaPublicacao_Publicacao_Usuario ON dbo.CurtidaPublicacao (publicacaoId, usuarioId);
+END;
+GO
+
+IF OBJECT_ID(N'dbo.SeguimentoUsuario', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.SeguimentoUsuario
+    (
+        id BIGINT IDENTITY(1,1) NOT NULL,
+        seguidorId BIGINT NOT NULL,
+        seguidoId BIGINT NOT NULL,
+        criadoEm DATETIME2 NOT NULL CONSTRAINT DF_SeguimentoUsuario_CriadoEm DEFAULT SYSDATETIME(),
+        CONSTRAINT PK_SeguimentoUsuario PRIMARY KEY (id),
+        CONSTRAINT FK_SeguimentoUsuario_Seguidor FOREIGN KEY (seguidorId) REFERENCES dbo.usuario(id),
+        CONSTRAINT FK_SeguimentoUsuario_Seguido FOREIGN KEY (seguidoId) REFERENCES dbo.usuario(id),
+        CONSTRAINT CK_SeguimentoUsuario_NaoSeguirASi CHECK (seguidorId <> seguidoId)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_SeguimentoUsuario_Seguidor_Seguido' AND object_id = OBJECT_ID(N'dbo.SeguimentoUsuario'))
+BEGIN
+    CREATE UNIQUE INDEX UX_SeguimentoUsuario_Seguidor_Seguido ON dbo.SeguimentoUsuario (seguidorId, seguidoId);
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PublicacaoComunidade_CriadoEm' AND object_id = OBJECT_ID(N'dbo.PublicacaoComunidade'))
+BEGIN
+    CREATE INDEX IX_PublicacaoComunidade_CriadoEm ON dbo.PublicacaoComunidade (criadoEm DESC);
+END;
+GO
+
+-- Conferência: tabelas do banco
 SELECT TABLE_SCHEMA AS Esquema, TABLE_NAME AS Tabela
 FROM INFORMATION_SCHEMA.TABLES
 WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'dbo'
 ORDER BY TABLE_NAME;
 GO
 
--- 10. Conferência: chaves estrangeiras e relacionamentos
+-- Conferência: chaves estrangeiras e relacionamentos
 SELECT
     fk.name AS NomeRelacionamento,
     OBJECT_NAME(fk.parent_object_id) AS TabelaOrigem,

@@ -117,7 +117,10 @@ public class CalculoMetaCaloricaService {
                         + "nutricional; valide com um nutricionista.";
                 break;
 
+            case "ganhar massa":
             case "ganhar massa muscular":
+            case "ganhar musculos":
+            case "ganhar musculo":
                 estimativa = (int) Math.round(manutencao * 1.10);
                 mensagem = "Simulação inicial para ganho de massa muscular, "
                         + "com aumento ilustrativo de 10% sobre a manutenção. "
@@ -140,6 +143,7 @@ public class CalculoMetaCaloricaService {
 
             case "melhorar minha alimentacao":
             case "melhorar alimentacao":
+            case "orientacao alimentar":
                 return resposta(null, "ORIENTACAO_ALIMENTAR",
                         "Seu objetivo é melhorar a alimentação. Priorize "
                         + "refeições variadas e equilibradas. Não foi definida "
@@ -170,8 +174,8 @@ public class CalculoMetaCaloricaService {
             case "leve", "levemente ativo", "levemente ativa" -> 1.375;
             case "moderado", "moderada", "moderadamente ativo",
                     "moderadamente ativa" -> 1.55;
-            case "alto", "alta", "muito ativo", "muito ativa" -> 1.725;
-            case "muito alto", "muito alta" -> 1.9;
+            case "alto", "alta", "intenso", "intensa", "muito ativo", "muito ativa" -> 1.725;
+            case "muito alto", "muito alta", "muito intenso", "muito intensa" -> 1.9;
             default -> 0;
         };
     }
