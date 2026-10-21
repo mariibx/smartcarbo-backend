@@ -127,6 +127,45 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID('dbo.Notificacao', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Notificacao (
+        id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        destinatarioId BIGINT NOT NULL,
+        atorId BIGINT NULL,
+        tipo NVARCHAR(30) NOT NULL,
+        titulo NVARCHAR(100) NOT NULL,
+        mensagem NVARCHAR(300) NOT NULL,
+        referenciaId BIGINT NULL,
+        lida BIT NOT NULL
+            CONSTRAINT DF_Notificacao_Lida DEFAULT 0,
+        criadoEm DATETIME2 NOT NULL
+            CONSTRAINT DF_Notificacao_CriadoEm
+            DEFAULT SYSDATETIME(),
+
+        CONSTRAINT FK_Notificacao_Destinatario
+            FOREIGN KEY (destinatarioId)
+            REFERENCES dbo.usuario(id),
+
+        CONSTRAINT FK_Notificacao_Ator
+            FOREIGN KEY (atorId)
+            REFERENCES dbo.usuario(id)
+    );
+
+    CREATE INDEX IX_Notificacao_Destinatario_CriadoEm
+        ON dbo.Notificacao (
+            destinatarioId,
+            criadoEm DESC
+        );
+END;
+GO
+
+SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Notificacao'
+ORDER BY ORDINAL_POSITION;
+GO
+
 -- Índices para consultas frequentes e integridade dos dados
 IF NOT EXISTS
 (
