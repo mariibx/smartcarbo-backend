@@ -1,3 +1,4 @@
+
 package com.smartcarbo.model.service;
 
 import java.util.List;
@@ -28,21 +29,28 @@ public class ComunidadeService {
     private final CurtidaPublicacaoRepository curtidaRepository;
     private final SeguimentoUsuarioRepository seguimentoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final NotificacaoService notificacaoService;
 
     public ComunidadeService(
             PublicacaoComunidadeRepository publicacaoRepository,
             CurtidaPublicacaoRepository curtidaRepository,
             SeguimentoUsuarioRepository seguimentoRepository,
-            UsuarioRepository usuarioRepository) {
+            UsuarioRepository usuarioRepository,
+            NotificacaoService notificacaoService) {
+
         this.publicacaoRepository = publicacaoRepository;
         this.curtidaRepository = curtidaRepository;
         this.seguimentoRepository = seguimentoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.notificacaoService = notificacaoService;
     }
 
     @Transactional(readOnly = true)
-    public List<ComunidadePublicacaoResponse> listarPublicacoes(Long usuarioId) {
+    public List<ComunidadePublicacaoResponse> listarPublicacoes(
+            Long usuarioId) {
+
         validarUsuario(usuarioId);
+
         return publicacaoRepository.findTop20ByOrderByCriadoEmDesc()
                 .stream()
                 .map(publicacao -> paraResponse(publicacao, usuarioId))
@@ -53,6 +61,7 @@ public class ComunidadeService {
     public ComunidadePublicacaoResponse publicar(
             ComunidadePublicacaoRequest request,
             Long usuarioId) {
+
         validarUsuario(usuarioId);
 
         if (request == null) {
@@ -75,6 +84,7 @@ public class ComunidadeService {
                 && !imagem.startsWith("data:image/")
                 && !imagem.startsWith("https://")
                 && !imagem.startsWith("http://")) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "A imagem precisa ser uma imagem válida ou uma URL http/https.");
@@ -84,16 +94,22 @@ public class ComunidadeService {
         publicacao.setUsuarioId(usuarioId);
         publicacao.setTexto(texto);
         publicacao.setImagem(imagem);
-        publicacao.setCategoria(categoria == null ? CATEGORIA_PADRAO : categoria);
+        publicacao.setCategoria(
+                categoria == null ? CATEGORIA_PADRAO : categoria);
 
-        PublicacaoComunidade salva = publicacaoRepository.saveAndFlush(publicacao);
+        PublicacaoComunidade salva =
+                publicacaoRepository.saveAndFlush(publicacao);
+
         return paraResponse(salva, usuarioId);
     }
 
     @Transactional
     public void excluirPublicacao(Long publicacaoId, Long usuarioId) {
+
         validarUsuario(usuarioId);
-        PublicacaoComunidade publicacao = buscarPublicacao(publicacaoId);
+
+        PublicacaoComunidade publicacao =
+                buscarPublicacao(publicacaoId);
 
         if (!publicacao.getUsuarioId().equals(usuarioId)) {
             throw new ResponseStatusException(
@@ -102,35 +118,67 @@ public class ComunidadeService {
         }
 
         curtidaRepository.deleteAllByPublicacaoId(publicacaoId);
-        publicacaoRepository.deleteByIdAndUsuarioId(publicacaoId, usuarioId);
+        publicacaoRepository.deleteByIdAndUsuarioId(
+                publicacaoId, usuarioId);
         publicacaoRepository.flush();
     }
 
     @Transactional
     public void curtir(Long publicacaoId, Long usuarioId) {
-        validarUsuario(usuarioId);
-        buscarPublicacao(publicacaoId);
 
-        if (!curtidaRepository.existsByPublicacaoIdAndUsuarioId(publicacaoId, usuarioId)) {
+        validarUsuario(usuarioId);
+
+        PublicacaoComunidade publicacao =
+                buscarPublicacao(publicacaoId);
+
+        boolean jaCurtiu =
+                curtidaRepository.existsByPublicacaoIdAndUsuarioId(
+                        publicacaoId, usuarioId);
+
+        if (!jaCurtiu) {
             CurtidaPublicacao curtida = new CurtidaPublicacao();
             curtida.setPublicacaoId(publicacaoId);
             curtida.setUsuarioId(usuarioId);
+
             curtidaRepository.saveAndFlush(curtida);
+
+            Long donoPublicacaoId = publicacao.getUsuarioId();
+
+            if (!donoPublicacaoId.equals(usuarioId)) {
+                Usuario ator = validarUsuario(usuarioId);
+                String nome = nomePublico(ator);
+
+                notificacaoService.criar(
+                        donoPublicacaoId,
+                        usuarioId,
+                        "CURTIDA_PUBLICACAO",
+                        "Nova curtida",
+                        nome + " curtiu sua publicação.",
+                        publicacaoId
+                );
+            }
         }
     }
 
     @Transactional
     public void descurtir(Long publicacaoId, Long usuarioId) {
+
         validarUsuario(usuarioId);
         buscarPublicacao(publicacaoId);
-        curtidaRepository.deleteByPublicacaoIdAndUsuarioId(publicacaoId, usuarioId);
+
+        curtidaRepository.deleteByPublicacaoIdAndUsuarioId(
+                publicacaoId, usuarioId);
     }
 
     @Transactional(readOnly = true)
     public List<ComunidadePerfilResponse> listarPerfis(Long usuarioId) {
+
         Usuario atual = validarUsuario(usuarioId);
-        return usuarioRepository.findAll().stream()
-                .filter(usuario -> !usuario.getId().equals(atual.getId()))
+
+        return usuarioRepository.findAll()
+                .stream()
+                .filter(usuario ->
+                        !usuario.getId().equals(atual.getId()))
                 .map(usuario -> new ComunidadePerfilResponse(
                         usuario.getId(),
                         nomePublico(usuario),
@@ -142,6 +190,7 @@ public class ComunidadeService {
 
     @Transactional
     public void seguir(Long seguidoId, Long seguidorId) {
+
         validarUsuario(seguidorId);
         validarIdUsuario(seguidoId);
 
@@ -157,16 +206,34 @@ public class ComunidadeService {
                     "O perfil que você tentou seguir não foi encontrado.");
         }
 
-        if (!seguimentoRepository.existsBySeguidorIdAndSeguidoId(seguidorId, seguidoId)) {
+        boolean jaSegue =
+                seguimentoRepository.existsBySeguidorIdAndSeguidoId(
+                        seguidorId, seguidoId);
+
+        if (!jaSegue) {
             SeguimentoUsuario seguimento = new SeguimentoUsuario();
             seguimento.setSeguidorId(seguidorId);
             seguimento.setSeguidoId(seguidoId);
+
             seguimentoRepository.saveAndFlush(seguimento);
+
+            Usuario ator = validarUsuario(seguidorId);
+            String nome = nomePublico(ator);
+
+            notificacaoService.criar(
+                    seguidoId,
+                    seguidorId,
+                    "NOVO_SEGUIDOR",
+                    "Novo seguidor",
+                    nome + " começou a seguir você.",
+                    seguidoId
+            );
         }
     }
 
     @Transactional
     public void deixarDeSeguir(Long seguidoId, Long seguidorId) {
+
         validarUsuario(seguidorId);
         validarIdUsuario(seguidoId);
 
@@ -182,13 +249,16 @@ public class ComunidadeService {
                     "O perfil não foi encontrado.");
         }
 
-        seguimentoRepository.deleteBySeguidorIdAndSeguidoId(seguidorId, seguidoId);
+        seguimentoRepository.deleteBySeguidorIdAndSeguidoId(
+                seguidorId, seguidoId);
     }
 
     private ComunidadePublicacaoResponse paraResponse(
             PublicacaoComunidade publicacao,
             Long usuarioId) {
-        String autor = usuarioRepository.findById(publicacao.getUsuarioId())
+
+        String autor = usuarioRepository
+                .findById(publicacao.getUsuarioId())
                 .map(this::nomePublico)
                 .orElse("Usuário SmartCarbo");
 
@@ -200,14 +270,17 @@ public class ComunidadeService {
                 publicacao.getImagem(),
                 publicacao.getCategoria(),
                 publicacao.getCriadoEm(),
-                curtidaRepository.countByPublicacaoId(publicacao.getId()),
+                curtidaRepository.countByPublicacaoId(
+                        publicacao.getId()),
                 curtidaRepository.existsByPublicacaoIdAndUsuarioId(
                         publicacao.getId(), usuarioId),
                 publicacao.getUsuarioId().equals(usuarioId));
     }
 
     private PublicacaoComunidade buscarPublicacao(Long id) {
+
         validarIdUsuario(id);
+
         return publicacaoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -215,7 +288,9 @@ public class ComunidadeService {
     }
 
     private Usuario validarUsuario(Long usuarioId) {
+
         validarIdUsuario(usuarioId);
+
         return usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
@@ -223,6 +298,7 @@ public class ComunidadeService {
     }
 
     private void validarIdUsuario(Long id) {
+
         if (id == null || id <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -231,14 +307,18 @@ public class ComunidadeService {
     }
 
     private String nomePublico(Usuario usuario) {
+
         String nome = normalizar(usuario.getNome());
+
         return nome == null ? "Usuário SmartCarbo" : nome;
     }
 
     private String normalizar(String valor) {
+
         if (valor == null || valor.isBlank()) {
             return null;
         }
+
         return valor.trim();
     }
 }

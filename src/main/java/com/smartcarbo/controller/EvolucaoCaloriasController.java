@@ -1,3 +1,4 @@
+
 package com.smartcarbo.controller;
 
 import java.time.LocalDate;
@@ -13,9 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.smartcarbo.model.dto.EvolucaoCaloriasDTO;
+import com.smartcarbo.model.entity.Usuario;
 import com.smartcarbo.model.service.EvolucaoCaloriasService;
 import com.smartcarbo.model.service.UsuarioService;
-import com.smartcarbo.model.entity.Usuario;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -27,12 +28,14 @@ public class EvolucaoCaloriasController {
     public EvolucaoCaloriasController(
             EvolucaoCaloriasService evolucaoCaloriasService,
             UsuarioService usuarioService) {
+
         this.evolucaoCaloriasService = evolucaoCaloriasService;
         this.usuarioService = usuarioService;
     }
 
     @GetMapping("/calorias")
     public List<EvolucaoCaloriasDTO> consultar(
+
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate inicio,
@@ -43,6 +46,7 @@ public class EvolucaoCaloriasController {
 
             Authentication authentication) {
 
+        // Verifica a autenticação
         if (authentication == null
                 || !authentication.isAuthenticated()
                 || authentication.getName() == null
@@ -51,13 +55,20 @@ public class EvolucaoCaloriasController {
 
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "É necessário estar autenticado.");
+                    "É necessário estar autenticado."
+            );
         }
 
+        // Recupera o usuário autenticado pelo e-mail
         Usuario usuario = usuarioService.buscarPorEmail(
-                authentication.getName());
+                authentication.getName()
+        );
 
+        // Consulta a evolução de calorias do usuário
         return evolucaoCaloriasService.consultar(
-                usuario.getId(), inicio, fim);
+                usuario.getId(),
+                inicio,
+                fim
+        );
     }
 }

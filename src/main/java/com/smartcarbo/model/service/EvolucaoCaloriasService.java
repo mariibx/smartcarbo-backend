@@ -1,3 +1,4 @@
+
 package com.smartcarbo.model.service;
 
 import java.time.LocalDate;
@@ -30,35 +31,47 @@ public class EvolucaoCaloriasService {
             LocalDate inicio,
             LocalDate fim) {
 
+        // Valida o usuário autenticado
         if (usuarioId == null || usuarioId <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "Usuário autenticado inválido.");
+                    "Usuário autenticado inválido."
+            );
         }
 
+        // Valida o período solicitado
         if (inicio == null || fim == null || inicio.isAfter(fim)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Informe um período válido.");
+                    "Informe um período válido."
+            );
         }
 
+        // Limita a consulta a 366 dias
         if (inicio.plusDays(365).isBefore(fim)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "O período máximo permitido é de 366 dias.");
+                    "O período máximo permitido é de 366 dias."
+            );
         }
 
         LocalDateTime inicioData = inicio.atStartOfDay();
         LocalDateTime fimExclusivo = fim.plusDays(1).atStartOfDay();
 
+        // Busca os registros alimentares do usuário no período
         List<RegistroAlimentacao> registros =
                 repository
-                    .findAllByUsuarioIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
-                            usuarioId, inicioData, fimExclusivo);
+                        .findAllByUsuarioIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
+                                usuarioId,
+                                inicioData,
+                                fimExclusivo
+                        );
 
+        // Organiza o total de calorias por dia
         Map<LocalDate, Double> totais = new TreeMap<>();
 
         for (RegistroAlimentacao registro : registros) {
+
             if (registro.getDataHora() == null) {
                 continue;
             }
@@ -72,15 +85,19 @@ public class EvolucaoCaloriasService {
             totais.merge(dia, calorias, Double::sum);
         }
 
+        // Monta a resposta incluindo dias sem consumo
         List<EvolucaoCaloriasDTO> resultado = new ArrayList<>();
 
         for (LocalDate dia = inicio;
                 !dia.isAfter(fim);
                 dia = dia.plusDays(1)) {
 
-            resultado.add(new EvolucaoCaloriasDTO(
-                    dia,
-                    totais.getOrDefault(dia, 0.0)));
+            resultado.add(
+                    new EvolucaoCaloriasDTO(
+                            dia,
+                            totais.getOrDefault(dia, 0.0)
+                    )
+            );
         }
 
         return resultado;

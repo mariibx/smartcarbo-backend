@@ -1,11 +1,11 @@
 @baseUrl = http://localhost:8080
-@dataTeste = 2026-10-16
+@dataTeste = 2026-10-21
 
 ###############################################################################
-# 1. AUTENTICAÇÃO
+# 1. AUTENTICACAO
 ###############################################################################
 
-### 1.1 Login — execute primeiro
+### 1.1 Login (execute primeiro)
 # @name login
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
@@ -15,579 +15,190 @@ Content-Type: application/json
   "senha": "Teste@123456"
 }
 
-### Token retornado pelo login — usado nas requisições seguintes
+###
+# O REST Client captura o token da resposta do login.
+# Confirme se a propriedade retornada pela API se chama "token".
 @token = {{login.response.body.token}}
 
-### 1.2 Login sem dados — esperado: erro 4xx
+### 1.2 Login sem dados (esperado: 4xx)
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
 {}
 
-### 1.3 Login com senha incorreta — esperado: 401 (ou erro de autenticação equivalente)
+### 1.3 Login com senha incorreta (esperado: 401 ou erro equivalente)
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "gilmar@gmail.com",
-  "senha": "Teste@123456"
+  "email": "SEU_EMAIL",
+  "senha": "SENHA_INCORRETA"
 }
 
 ###############################################################################
-# 2. USUÁRIO / PERFIL
+# 2. PERFIL E META CALORICA
 ###############################################################################
 
-### 2.1  o perfil do usuário autenticado
+### 2.1 Consultar meu perfil
 GET {{baseUrl}}/api/v1/usuarios/me
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODcwNDAsImV4cCI6MTc5MjI5MDY0MH0.w2H6jp3mV3bK-YRRDgpjvppmL_NFRzzQHklqJW5MsZE
-
-### 2.2 Consultar o usuário autenticado por ID
-# Troque 2 pelo ID retornado em /api/v1/usuarios/me, se necessário.
-GET {{baseUrl}}/api/v1/usuarios/2
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 2.3 Consultar meta calórica estimada
+### 2.2 Consultar meta calorica
 GET {{baseUrl}}/api/v1/usuarios/me/meta-calorica
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 2.4 Consultar perfil sem token — esperado: 401/403
+### 2.3 Consultar perfil sem token (esperado: 401/403)
 GET {{baseUrl}}/api/v1/usuarios/me
 Accept: application/json
 
-### 2.5 Cadastrar usuário de teste
-# Use um e-mail ainda não cadastrado e uma senha válida.
-# @name cadastrarUsuario
-POST {{baseUrl}}/api/v1/usuarios
-Content-Type: application/json
+### Seguir usuário 2
+POST {{baseUrl}}/api/v1/comunidade/perfis/2/seguir
+Authorization: Bearer {{token}}
 
-{
-  "nome": "Teste de Email Duplicado",
-  "email": "usuario.teste.smartcarbo@example.com",
-  "senha": "OutraSenha123!",
-  "dataNascimento": "2005-05-15",
-  "altura": 1.70,
-  "peso": 65.0,
-  "sexo": "Feminino",
-  "objetivo": "Manter peso",
-  "nivelAtividade": "Moderado",
-  "restricoes": "Nenhuma",
-  "condicaoSaude": "Nenhuma",
-  "avaliacaoAlimentacao": 7
-}
+### Listar publicações da comunidade
+# @name listarComunidade
+GET {{baseUrl}}/api/v1/comunidade/publicacoes
+Accept: application/json
+Authorization: Bearer {{token}}
 
-### 2.6 Cadastro com e-mail inválido — esperado: erro 4xx
-POST {{baseUrl}}/api/v1/usuarios
-Content-Type: application/json
 
-{
-  "nome": "Usuario Invalido",
-  "email": "email-invalido",
-  "senha": "SenhaTeste123!"
-}
+### Curtir publicação 2 com o usuário 10006
+POST {{baseUrl}}/api/v1/comunidade/publicacoes/2/curtida
+Authorization: Bearer {{token}}
+
 
 ###############################################################################
-# 3. REFEIÇÕES
+# 3. NOTIFICACOES
+# Execute depois de obter um token valido na secao 1.
+# A tabela pode estar vazia ate que um evento gere uma notificacao.
 ###############################################################################
 
-### 3.1 Listar refeições do usuário autenticado
+### 3.1 Listar todas as minhas notificacoes (esperado: 200 e uma lista)
+# @name listarNotificacoes
+GET {{baseUrl}}/api/v1/notificacoes
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 3.2 Listar minhas notificacoes nao lidas (esperado: 200 e uma lista)
+# @name listarNotificacoesNaoLidas
+GET {{baseUrl}}/api/v1/notificacoes/nao-lidas
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 3.3 Contar minhas notificacoes nao lidas (esperado: 200)
+# Resposta esperada quando nao houver notificacoes nao lidas:
+# { "quantidade": 0 }
+GET {{baseUrl}}/api/v1/notificacoes/nao-lidas/contagem
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 3.4 Marcar uma notificacao como lida
+# Substitua 1 por um ID real presente na resposta de 3.1.
+# Esperado: 204 se a notificacao existir e pertencer a conta autenticada.
+PATCH {{baseUrl}}/api/v1/notificacoes/2/lida
+Authorization: Bearer {{token}}
+
+### 3.5 Marcar todas as minhas notificacoes como lidas (esperado: 204)
+PATCH {{baseUrl}}/api/v1/notificacoes/lidas
+Authorization: Bearer {{token}}
+
+### 3.6 Tentar listar notificacoes sem token (esperado: 401/403)
+GET {{baseUrl}}/api/v1/notificacoes
+Accept: application/json
+
+### 3.7 Testar isolamento: ID inexistente ou de outra conta
+# Use um ID que exista e pertença a OUTRA conta para validar o isolamento.
+# A API deve responder 404, sem revelar a notificacao alheia.
+PATCH {{baseUrl}}/api/v1/notificacoes/999999/lida
+Authorization: Bearer {{token}}
+
+### Contar notificações não lidas
+GET {{baseUrl}}/api/v1/notificacoes/nao-lidas/contagem
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###############################################################################
+# 4. REFEICOES
+###############################################################################
+
+### 4.1 Listar minhas refeicoes
 GET {{baseUrl}}/api/v1/refeicoes
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 3.2 Listar refeições por data
+### 4.2 Listar refeicoes por data
 GET {{baseUrl}}/api/v1/refeicoes?data={{dataTeste}}
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 3.3 Criar refeição de teste
-# @name criarRefeicao
-POST {{baseUrl}}/api/v1/refeicoes
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "nome": "Café da manhã - teste REST",
-  "descricao": "Refeição criada pelo REST Client",
-  "dataRefeicao": "{{dataTeste}}"
-}
-
-### ID da refeição criada
-@refeicaoId = {{criarRefeicao.response.body.id}}
-
-### 3.4 Consultar a refeição criada
-GET {{baseUrl}}/api/v1/refeicoes/{{refeicaoId}}
-Accept: application/json
-Authorization: Bearer {{token}}
-
-### 3.5 Atualizar a refeição criada
-PUT {{baseUrl}}/api/v1/refeicoes/{{refeicaoId}}
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "nome": "Café da manhã - atualizado",
-  "descricao": "Teste de atualização via REST Client",
-  "dataRefeicao": "{{dataTeste}}"
-}
-
 ###############################################################################
-# 4. REGISTROS DE ALIMENTAÇÃO
+# 5. REGISTROS DE ALIMENTACAO
 ###############################################################################
 
-### 4.1 Listar registros alimentares do usuário autenticado
-GET {{baseUrl}}/api/v1/refeicoes
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODIxNzgsImV4cCI6MTc5MjI4NTc3OH0.o7PviziXcHoRYAWxpU3_tRDWHjsSHenJClhArC3ON68
-Accept: application/json
-Accept: application/json
-
-GET http://localhost:8080/api/v1/registros-alimentacao
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODQzODEsImV4cCI6MTc5MjI4Nzk4MX0.ysLa9-kL3Sj5V-GEwng9k0dKSE4tFSijAkWX3ofvw5c
-Accept: application/json
-
-### Consultar refeições cadastradas
-GET http://localhost:8080/api/v1/refeicoes
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODQzODEsImV4cCI6MTc5MjI4Nzk4MX0.ysLa9-kL3Sj5V-GEwng9k0dKSE4tFSijAkWX3ofvw5c
-Accept: application/json
-
-### 4.2 Listar registros alimentares por data
-GET {{baseUrl}}/api/v1/dashboard/resumo?data=2026-10-17
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODE1NzYsImV4cCI6MTc5MjI4NTE3Nn0.3QczyAaoJxPwB3go8z3D9FJUQJnVGg_P9b84eua96xo
-Accept: application/json
-
-### 4.3 Criar registro alimentar vinculado à refeição criada acima
-# @name criarRegistroAlimentar
-POST {{baseUrl}}/api/v1/registros-alimentacao
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "nomeAlimento": "Banana prata - teste REST",
-  "quantidade": 1.0,
-  "tipoRefeicao": "Café da manhã",
-  "calorias": 89.0,
-  "carboidratos": 23.0,
-  "proteinas": 1.1,
-  "gorduras": 0.3,
-  "fibras": 2.0,
-  "sodio": 1.0,
-  "dataHora": "2026-10-16T08:00:00",
-  "refeicaoId": {{refeicaoId}}
-}
-
-### ID do registro alimentar criado
-@registroAlimentacaoId = {{criarRegistroAlimentar.response.body.id}}
-
-### 4.4 Consultar registro alimentar criado
-GET {{baseUrl}}/api/v1/registros-alimentacao/{{registroAlimentacaoId}}
+### 5.1 Listar meus registros alimentares
+GET {{baseUrl}}/api/v1/registros-alimentacao
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 4.5 Atualizar registro alimentar criado
-PUT {{baseUrl}}/api/v1/registros-alimentacao/{{registroAlimentacaoId}}
-Content-Type: application/json
+### 5.2 Consultar resumo do dashboard por data
+GET {{baseUrl}}/api/v1/dashboard/resumo?data={{dataTeste}}
+Accept: application/json
 Authorization: Bearer {{token}}
-
-{
-  "nomeAlimento": "Banana prata - teste atualizado",
-  "quantidade": 1.0,
-  "tipoRefeicao": "Café da manhã",
-  "calorias": 90.0,
-  "carboidratos": 23.0,
-  "proteinas": 1.1,
-  "gorduras": 0.3,
-  "fibras": 2.0,
-  "sodio": 1.0,
-  "dataHora": "2026-10-16T08:00:00",
-  "refeicaoId": {{refeicaoId}}
-}
-
-### 4.6 Criar registro alimentar sem token — esperado: 401/403
-POST {{baseUrl}}/api/v1/registros-alimentacao
-Content-Type: application/json
-
-{
-  "nomeAlimento": "Teste sem token",
-  "quantidade": 1.0,
-  "tipoRefeicao": "Lanche",
-  "calorias": 50.0,
-  "carboidratos": 10.0,
-  "proteinas": 1.0,
-  "gorduras": 0.5,
-  "fibras": 1.0,
-  "sodio": 1.0,
-  "dataHora": "2026-10-16T15:00:00"
-}
 
 ###############################################################################
-# 5. HISTÓRICO DE PESO
+# 6. HISTORICO DE PESO
 ###############################################################################
 
-### 5.1 Listar histórico de peso
+### 6.1 Listar meu historico de peso
 GET {{baseUrl}}/api/v1/pesos
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 5.2 Criar registro de peso
-# @name criarPeso
-POST {{baseUrl}}/api/v1/pesos
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "peso": 68.0,
-  "data": "{{dataTeste}}"
-}
-
-### ID do registro de peso retornado pela API
-@pesoId = {{criarPeso.response.body.id}}
-
-### 5.3 Consultar o registro de peso criado/retornado
-GET {{baseUrl}}/api/v1/pesos
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODcwNDAsImV4cCI6MTc5MjI5MDY0MH0.w2H6jp3mV3bK-YRRDgpjvppmL_NFRzzQHklqJW5MsZE
-
-### 5.4 Atualizar registro de peso
-# Usa o ID retornado pelo teste 5.2. Altere o valor se não quiser testar com 67.5 kg.
-PUT {{baseUrl}}/api/v1/pesos
-Content-Type: application/json
-Authorization: Bearer 
-
-{
-  "peso": 67.5,
-  "data": "{{dataTeste}}"
-}
-
-### 5.5 Peso inválido — esperado: erro 4xx
-POST {{baseUrl}}/api/v1/pesos
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "peso": 0,
-  "data": "{{dataTeste}}"
-}
-
-### 5.6 Data futura — esperado: erro 4xx, se a validação estiver implementada
-POST {{baseUrl}}/api/v1/pesos
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "peso": 65.0,
-  "data": "2099-01-01"
-}
-
-### 5.7 Listar pesos sem token — esperado: 401/403
-GET {{baseUrl}}/api/v1/pesos
-Accept: application/json
-
 ###############################################################################
-# 6. CONSUMO DE ÁGUA
+# 7. CONSUMO DE AGUA
 ###############################################################################
 
-### 6.1 Registrar consumo de água (250 ml)
-# @name criarAgua
-POST {{baseUrl}}/api/v1/agua
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "quantidadeMl": 250
-}
-
-### ID do registro de água criado
-@aguaId = {{criarAgua.response.body.id}}
-
-### 6.2 Listar registros de água
+### 7.1 Listar meus registros de agua
 GET {{baseUrl}}/api/v1/agua
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 6.3 Consultar consumo de água por data
+### 7.2 Consultar consumo de agua por data
 GET {{baseUrl}}/api/v1/agua/data/{{dataTeste}}
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 6.4 Consultar registro de água criado
-GET {{baseUrl}}/api/v1/agua/{{aguaId}}
-Accept: application/json
-Authorization: Bearer {{token}}
-
-### 6.5 Atualizar registro de água criado (500 ml)
-PUT {{baseUrl}}/api/v1/agua/{{aguaId}}
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "quantidadeMl": 500
-}
-
 ###############################################################################
-# 7. DASHBOARD E META CALÓRICA
+# 8. DASHBOARD
 ###############################################################################
 
-### 7.1 Consultar resumo do dashboard para a data de teste
-GET {{baseUrl}}/api/v1/dashboard/resumo?data=2026-10-14
+### 8.1 Consultar resumo do dashboard
+GET {{baseUrl}}/api/v1/dashboard/resumo?data={{dataTeste}}
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 7.2 Consultar evolução de calorias por período
-GET {{baseUrl}}/api/v1/dashboard/calorias?inicio=2026-10-01&fim=2026-10-16
-Accept: application/json
-Authorization: Bearer {{token}}
-
-### 7.3 Consultar meta calórica do usuário
-GET {{baseUrl}}/api/v1/usuarios/me/meta-calorica
+### 8.2 Consultar evolucao de calorias por periodo
+GET {{baseUrl}}/api/v1/dashboard/calorias?inicio=2026-10-01&fim={{dataTeste}}
 Accept: application/json
 Authorization: Bearer {{token}}
 
 ###############################################################################
-# 8. CATÁLOGO DE ATIVIDADES FÍSICAS
+# 9. ATIVIDADES FISICAS
 ###############################################################################
 
-### 8.1 Listar atividades físicas
+### 9.1 Listar atividades fisicas
 GET {{baseUrl}}/api/v1/atividades-fisicas
 Accept: application/json
 Authorization: Bearer {{token}}
 
-### 8.2 Criar atividade física de teste
-# @name criarAtividade
-POST {{baseUrl}}/api/v1/atividades-fisicas
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "nome": "Caminhada - teste REST",
-  "descricao": "Atividade criada para validar a API",
-  "duracao": 30,
-  "calorias": 120
-}
-
-### ID da atividade criada
-@atividadeId = {{criarAtividade.response.body.id}}
-
-### 8.3 Consultar atividade criada
-GET {{baseUrl}}/api/v1/atividades-fisicas/1
-Accept: application/json
-Authorization: Bearer {{token}}
-
-### 8.4 Atualizar atividade criada
-PUT {{baseUrl}}/api/v1/atividades-fisicas/1
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "nome": "Caminhada - teste atualizado",
-  "descricao": "Atividade atualizada pelo REST Client",
-  "duracao": 35,
-  "calorias": 140
-}
-
 ###############################################################################
-# 9. EXCLUSÕES OPCIONAIS — NÃO EXECUTAR SEM CONFERIR OS IDs
-###############################################################################
-# As requisições abaixo estão comentadas para evitar apagar registros por engano.
-# Remova o # apenas quando quiser testar exclusão e tiver conferido o registro.
+# OBSERVACOES
+# - Use sempre o token dinamico obtido na secao 1; evite tokens JWT fixos,
+#   pois expiram e podem pertencer a outra conta.
+# - Execute cada requisicao individualmente pelo link "Send Request".
+# - Os endpoints de notificacoes nao incluem criacao manual publica: as
+#   notificacoes devem ser geradas pelo backend quando eventos forem integrados.
+# - Para testar PATCH /{id}/lida, primeiro precisa existir uma notificacao real.
 
-# ### Excluir registro alimentar criado neste arquivo
-# DELETE {{baseUrl}}/api/v1/registros-alimentacao/{{registroAlimentacaoId}}
-# Authorization: Bearer {{token}}
-
-# ### Excluir refeição criada neste arquivo
-# DELETE {{baseUrl}}/api/v1/refeicoes/{{refeicaoId}}
-# Authorization: Bearer {{token}}
-
-# ### Excluir histórico de peso criado/retornado neste arquivo
-# DELETE {{baseUrl}}/api/v1/pesos/{{pesoId}}
-# Authorization: Bearer {{token}}
-
-# ### Excluir registro de água criado neste arquivo
-# DELETE {{baseUrl}}/api/v1/agua/{{aguaId}}
-# Authorization: Bearer {{token}}
-
-# ### Excluir atividade física criada neste arquivo
-# DELETE {{baseUrl}}/api/v1/atividades-fisicas/{{atividadeId}}
-
-GET {{baseUrl}}/api/v1/usuarios/me
-Accept: application/json
-Authorization: Bearer {{token}}
-
-
-### Atualizar perfil do usuário autenticado
-PUT {{baseUrl}}/api/v1/usuarios/2
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODcwNDAsImV4cCI6MTc5MjI5MDY0MH0.w2H6jp3mV3bK-YRRDgpjvppmL_NFRzzQHklqJW5MsZE
-
-{
-  "nome": "Gilmar dos Santos",
-  "email": "gilmar@gmail.com",
-  "dataNascimento": "2002-06-20",
-  "altura": 1.7,
-  "peso": 68.0,
-  "sexo": "Masculino",
-  "objetivo": "perder-peso",
-  "nivelAtividade": "sedentario",
-  "restricoes": "Amendoim, Lactose, Glúten, Frutos do mar, Outra",
-  "condicaoSaude": "diabetes",
-  "avaliacaoAlimentacao": 4
-}
-
-
-### Teste de segurança — tentar acessar outro usuário
-GET {{baseUrl}}/api/v1/usuarios/2
-Accept: application/json
-Authorization: Bearer {{token}}
-
-
-### Teste de segurança — tentar atualizar outro usuário
-PUT {{baseUrl}}/api/v1/usuarios/2
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "nome": "Tentativa de alteração não autorizada",
-  "email": "gilmar@gmail.com",
-  "dataNascimento": "2005-05-15",
-  "altura": 1.70,
-  "peso": 65.0,
-  "sexo": "Feminino",
-  "objetivo": "Manter peso",
-  "nivelAtividade": "Moderado",
-  "restricoes": "Nenhuma",
-  "condicaoSaude": "Nenhuma",
-  "avaliacaoAlimentacao": 7
-}
-
-
-### Teste de segurança — perfil sem autenticação
-GET {{baseUrl}}/api/v1/usuarios/me
-Accept: application/json
-
-
-### Teste de validação — e-mail inválido
-POST {{baseUrl}}/api/v1/usuarios
-Content-Type: application/json
-
-{
-  "nome": "Usuario Invalido",
-  "email": "email-invalido",
-  "senha": "SenhaTeste123!"
-}
-
-
-### Teste de validação — senha curta
-POST {{baseUrl}}/api/v1/usuarios
-Content-Type: application/json
-
-{
-  "nome": "Usuario Teste Senha",
-  "email": "senha.teste.smartcarbo@example.com",
-  "senha": "123"
-}
-
-
-### Teste — cadastro válido
-POST {{baseUrl}}/api/v1/usuarios
-Content-Type: application/json
-
-{
-  "nome": "Usuario Teste Validacao",
-  "email": "validacao.smartcarbo@example.com",
-  "senha": "SenhaValida123!"
-}
-
-
-### Teste — login do usuário recém-cadastrado
-POST {{baseUrl}}/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "validacao.smartcarbo@example.com",
-  "senha": "SenhaValida123!"
-}
-
-
-### Teste — perfil do usuário ID 4
-GET {{baseUrl}}/api/v1/usuarios/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ2YWxpZGFjYW8uc21hcnRjYXJib0BleGFtcGxlLmNvbSIsInVzdWFyaW9JZCI6NCwiaWF0IjoxNzkyMjc5MzQyLCJleHAiOjE3OTIyODI5NDJ9.9bB1K5WiU4fvAWwelWXzbOMkWoMKeh_5OGTSbQPPL-U
-Accept: application/json
-
-
-### Teste — atualizar próprio perfil
-PUT {{baseUrl}}/api/v1/usuarios/4
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ2YWxpZGFjYW8uc21hcnRjYXJib0BleGFtcGxlLmNvbSIsInVzdWFyaW9JZCI6NCwiaWF0IjoxNzkyMjc5MzQyLCJleHAiOjE3OTIyODI5NDJ9.9bB1K5WiU4fvAWwelWXzbOMkWoMKeh_5OGTSbQPPL-U
-Content-Type: application/json
-
-{
-  "nome": "Usuario Teste Validacao Atualizado",
-  "email": "validacao.smartcarbo@example.com",
-  "dataNascimento": "2005-05-15",
-  "altura": 1.70,
-  "peso": 66,
-  "sexo": "Feminino",
-  "objetivo": "Manter peso",
-  "nivelAtividade": "Moderado",
-  "restricoes": "Nenhuma",
-  "condicaoSaude": "Nenhuma",
-  "avaliacaoAlimentacao": 8
-}
-
-
-### Teste — confirmar perfil atualizado
-GET {{baseUrl}}/api/v1/usuarios/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ2YWxpZGFjYW8uc21hcnRjYXJib0BleGFtcGxlLmNvbSIsInVzdWFyaW9JZCI6NCwiaWF0IjoxNzkyMjc5MzQyLCJleHAiOjE3OTIyODI5NDJ9.9bB1K5WiU4fvAWwelWXzbOMkWoMKeh_5OGTSbQPPL-U
-Accept: application/json
-
-
-### Teste — meta calórica do usuário ID 4
-GET {{baseUrl}}/api/v1/usuarios/me/meta-calorica
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ2YWxpZGFjYW8uc21hcnRjYXJib0BleGFtcGxlLmNvbSIsInVzdWFyaW9JZCI6NCwiaWF0IjoxNzkyMjc5MzQyLCJleHAiOjE3OTIyODI5NDJ9.9bB1K5WiU4fvAWwelWXzbOMkWoMKeh_5OGTSbQPPL-U
-Accept: application/json
-
-
-### Teste — meta calórica sem autenticação
-GET {{baseUrl}}/api/v1/usuarios/me/meta-calorica
-Accept: application/json
-
-
-### Teste — excluir usuário sem autenticação
-DELETE {{baseUrl}}/api/v1/usuarios/4
-Accept: application/json
-
-
-### Teste — excluir outro usuário
-DELETE {{baseUrl}}/api/v1/usuarios/2
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ2YWxpZGFjYW8uc21hcnRjYXJib0BleGFtcGxlLmNvbSIsInVzdWFyaW9JZCI6NCwiaWF0IjoxNzkyMjc5MzQyLCJleHAiOjE3OTIyODI5NDJ9.9bB1K5WiU4fvAWwelWXzbOMkWoMKeh_5OGTSbQPPL-U
-Accept: application/json
-
-
-### Teste — confirmar que a conta ID 2 permanece ativa
-GET {{baseUrl}}/api/v1/usuarios/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyNzk4MTMsImV4cCI6MTc5MjI4MzQxM30.VMv3EuI1_WS7jMJPahXziDL6tYKJKIStZmgBWHDr_Kg
-Accept: application/json
-
-### Registrar peso de hoje
-POST http://localhost:8080/api/v1/pesos
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODcwNDAsImV4cCI6MTc5MjI5MDY0MH0.w2H6jp3mV3bK-YRRDgpjvppmL_NFRzzQHklqJW5MsZE
-
-{
-  "peso": 68.0,
-  "data": "2026-10-17"
-}
-
-### Testar atualização de peso
-PUT http://localhost:8080/api/v1/pesos/10002
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJnaWxtYXJAZ21haWwuY29tIiwidXN1YXJpb0lkIjoyLCJpYXQiOjE3OTIyODcwNDAsImV4cCI6MTc5MjI5MDY0MH0.w2H6jp3mV3bK-YRRDgpjvppmL_NFRzzQHklqJW5MsZE
-
-{
-  "peso": 68.0,
-  "data": "2026-10-17"
-}
